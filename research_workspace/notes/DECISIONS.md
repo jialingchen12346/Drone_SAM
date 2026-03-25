@@ -349,3 +349,13 @@
   - 已重评同 run：`67.67 -> 62.84`（`epoch_30`, `absent=0`，差值 `-4.83`）。
   - 已确认 S3 strict run 复测一致：`62.23`。
   - 已新增归档文档：`research_workspace/notes/MODEL_ATTEMPT_ARCHIVE_2026-03-25.md`，后续统一以 strict 口径汇总。
+
+## 2026-03-25
+
+- 决策：论文叙事采用“旧稿中的无人机工程场景问题定义”，模型主线新增 `mmsa_baseline` 作为重构基线。
+- 背景：现有 `RRF/DSD` 线在 strict 口径下进入收益平台，需要引入更贴近 MM SAM-Adapter 的“动态模态质量加权 + 跨模态交互 + 轻解码”基线做结构重启。
+- 影响：
+  - 训练入口新增 `--model-variant mmsa_baseline`（`segmentation/train_cacaf.py`）。
+  - 新增融合模块 `segmentation/models/fusion/mmsa_fusion.py`（含样本级质量权重与轻量双向交互）。
+  - 新增解码头 `segmentation/models/decode_heads/segformer_lite_head.py`（SegFormer 风格聚合）。
+  - 新增端到端模型 `segmentation/models/segmentors/mmsa_baseline_segmentor.py`，可直接接入现有训练/评测脚本。

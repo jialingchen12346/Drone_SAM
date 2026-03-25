@@ -45,6 +45,7 @@ from segmentation.datasets.fmb_dataset import (
     IGNORE_INDEX,
 )
 from segmentation.models.segmentors.cacaf_segmentor import CACafSegmentor
+from segmentation.models.segmentors.mmsa_baseline_segmentor import MMSABaselineSegmentor
 from segmentation.models.segmentors.rrf_dsd_segmentor import RRFDSDSegmentor
 
 
@@ -63,7 +64,7 @@ def parse_args():
     p.add_argument(
         "--model-variant",
         default="rrf_dsd",
-        choices=["cacaf", "rrf_dsd"],
+        choices=["cacaf", "rrf_dsd", "mmsa_baseline"],
         help="Segmentor variant to train",
     )
     p.add_argument("--local-rank", "--local_rank", type=int, default=-1,
@@ -418,7 +419,7 @@ def main():
         )
     rank0_print(f"[model] variant={args.model_variant}")
 
-    if args.model_variant == "rrf_dsd" and (args.no_cacaf or args.no_sagu):
+    if args.model_variant != "cacaf" and (args.no_cacaf or args.no_sagu):
         rank0_print("  [warn] --no-cacaf/--no-sagu 仅对 cacaf 变体生效，当前将忽略这些参数")
 
     train_split = "trainval" if args.use_trainval else "train"
@@ -483,7 +484,7 @@ def main():
             use_sagu=not args.no_sagu,
             ce_class_weight=ce_class_weight,
         ).to(device)
-    else:
+    elif args.model_variant == "rrf_dsd":
         model = RRFDSDSegmentor(
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
@@ -502,6 +503,18 @@ def main():
             use_rare_class_residual=args.use_rare_class_residual,
             rare_class_indices=rare_class_indices,
             rare_class_scale=args.rare_class_scale,
+            ce_class_weight=ce_class_weight,
+        ).to(device)
+    else:
+        model = MMSABaselineSegmentor(
+            sam2_checkpoint=args.sam2_ckpt,
+            sam2_config=args.sam2_cfg,
+            num_classes=NUM_CLASSES,
+            use_dice=args.use_dice,
+            dice_weight=args.dice_weight,
+            use_ohem=args.use_ohem,
+            ohem_thresh=args.ohem_thresh,
+            ohem_min_kept=args.ohem_min_kept,
             ce_class_weight=ce_class_weight,
         ).to(device)
 
