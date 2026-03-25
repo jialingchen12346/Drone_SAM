@@ -1,0 +1,1531 @@
+RTFDNet: Fusion-Decoupling for Robust RGB-T Segmentation
+Kunyu Tan, Mingjian Liang†
+Training stage
+
+arXiv:2603.09149v1 [cs.CV] 10 Mar 2026
+
+I. A BSTRACT
+Abstract— RGB-Thermal (RGB-T) semantic segmentation is
+essential for robotic systems operating in low-light or dark environments. However, traditional approaches often overemphasize
+modality balance, resulting in limited robustness and severe
+performance degradation when sensor signals are partially
+missing. Recent advances such as cross-modal knowledge distillation and modality-adaptive fine-tuning attempt to enhance
+cross-modal interaction, but they typically decouple modality
+fusion and modality adaptation, requiring multi-stage training
+with frozen models or teacher–student frameworks. We present
+RTFDNet, a three-branch encoder–decoder that unifies fusion
+and decoupling for robust RGB-T segmentation. Synergistic
+Feature Fusion (SFF) performs channel-wise gated exchange
+and lightweight spatial attention to inject complementary
+cues. Cross-Modal Decouple Regularization (CMDR) isolates
+modality-specific components from the fused representation
+and supervises unimodal decoders via stop-gradient targets.
+Region Decouple Regularization (RDR) enforces class-selective
+prediction consistency in confident regions while blocking
+gradients to the fusion branch. This feedback loop strengthens
+unimodal paths without degrading the fused stream, enabling
+efficient standalone inference at test time. Extensive experiments demonstrate the effectiveness of RTFDNet , showing
+consistent performance across varying modality conditions. Our
+implementation will be released to facilitate further research.
+Our source code are publicly available at https://github.
+com/curapima/RTFDNet.
+
+II. I NTRODUCTION
+Multimodal perception has become instrumental in
+Embodied-AI [1], [2], [3], advanced robotics [4], [5], [6]
+and autonomous vehicles [7], [8], [9]. Particularly, the fusion of RGB and Thermal (RGB-T) imagery leverages the
+complementary characteristics of these sensors, combining
+the rich texture from RGB cameras with the robustness of
+Thermal imaging in poor illumination or adverse weather,
+enabling reliable robotic operations in darkness [10], enhancing autonomous driving under inclement conditions [11], and
+facilitating specialized tasks such as cave exploration [6].
+The success of these applications hinges on sophisticated
+fusion strategies that integrate information from both modalities to achieve performance exceeding that of any single
+sensor [12], [13], [14], [15], [16].
+However, a fundamental assumption underpins the vast
+majority of state-of-the-art models, namely that all sensor
+inputs are consistently available and perfectly aligned. This
+assumption is fragile in real-world deployments, where sensors are prone to failure from hardware malfunctions, signal
+corruption, or environmental interference.
+Kunyu Tan and Mingjian Liang are independent researchers.
+
+† Corresponding author: 2443434059@qq.com
+
+RGB
+Encoder
+
+(A)
+
+Decoder
+
+Thermal
+Encoder
+
+RGB
+Encoder
+
+(B)
+
+Fusion
+
+Inference stage
+
+Thermal
+Encoder
+Encoder
+
+Fusion
+
+Fusion
+
+Decoder
+
+Fusion
+
+Decoder
+
+Decoder
+
+Distillation
+Fusion
+
+Encoder
+
+Decoder
+
+Decoder
+Fusion
+
+Decoder
+
+Regularization
+Thermal
+Encoder
+
+Update
+
+Distillation /
+Regularization
+
+Thermal
+Encoder
+
+RGB
+Encoder
+
+(C)
+Ours
+
+RGB
+Encoder
+
+Frozen
+
+Decoder
+
+RGB/Thermal
+Encoder
+RGB
+Encoder
+
+Thermal
+Encoder
+
+RGB/Thermal
+Decoder
+
+OR
+Fusion
+
+Decoder
+
+Fig. 1: Architecture comparison of training paradigms for
+RGB–Thermal segmentation under missing modalities. (A) Twostage knowledge distillation trains a multimodal teacher then distills
+to per-case students. (B) Modal-adaptation fine-tuning freezes the
+base and updates lightweight adapters to accommodate a dropped
+modality. (C) Our unified robustness training jointly optimizes
+RGB/Thermal encoders, a fusion branch, and multi-branch decoders
+with bidirectional consistency. At inference, we need to load only
+the corresponding encoder and decoder parameters.
+
+In such cases, how does performance degrade? As shown
+in Table I, we observe a disquieting trend that when one
+modality is lost, the performance of leading RGB-T segmentation models [17], [9] drops sharply, often falling below that
+of a system trained on a single modality from the start. This
+reveals that current multimodal systems lack the robustness
+required for dependable real-world operation in the face of
+sensor failures.
+Traditional approaches [18], [19] distill the multimodal
+knowledge of an RGB-T teacher into a single-modal student
+(RGB or Thermal). This paradigm hinders efficient training
+because it typically requires training separate students for
+each missing-modality scenario. To improve the efficiency
+of teacher-student pipelines, more recent approaches aim
+to build robustness directly into the model or its training
+process. These methods largely fall into two categories. The
+first is post hoc, parameter-efficient adaptation [20] as shown
+in Fig. 1(A). In this paradigm, a large pre-trained multimodal
+model is kept frozen, and lightweight adapters are trained
+specifically for each missing-modality scenario. The second
+is to integrate robustness into the training objective itself [15]
+as illustrated in Fig. 1(B), where a single model is trained
+from the start to be resilient to missing inputs (e.g., via selfdistillation with complementary masking).
+However, despite these advances, significant limitations
+remain. (i) Insufficient feature fusion attention. Adapterbased robustness freezes the multimodal backbone and trains
+
+TABLE I: Comparison on RGB-T segmentation with modality
+drops, (including signal loss, image corruption, and signal instability).
+Methods
+
+RGB-T
+RGB drop
+Thermal drop
+mIoU ↑ mIoU ↑ Diff ↓ mIoU ↑ Diff ↓
+
+RTFNet(ResNet152)
+EAEFNet(ResNet152)
+CMXNet(segformer-b4)
+StitchFusion(segformer-b2)
+CRM(swin-T)
+
+53.2
+58.95
+59.77
+58.04
+59.1
+
+37.3
+35.23
+53.55
+48.78
+50.98
+
+-15.9
+-23.72
+-6.22
+-9.26
+-8.12
+
+24.57
+41.72
+35.46
+41.42
+50.22
+
+-28.63
+-17.23
+-24.31
+16.62
+-8.88
+
+Ours(segformer-b2)
+
+58.97
+
+55.12
+
+-3.85
+
+53.2
+
+-5.77
+
+small, scenario-specific adapters. Because the fusion path
+gets little to no supervision, adapters hinge on a fixed fused
+representation, so unimodal branches gain little and remain
+weak when that representation is suboptimal. (ii) Insufficient
+decoupling. Single modality inputs still traverse the fused
+path, preventing standalone RGB only or T only inference
+needed for sensor dropouts, safety, and efficient fallback.
+To tackle these limitations, in this paper we propose
+RTFDNet, which combines the Fusion and Decouple strategy
+in a three-branch architecture, as illustrated in Fig. 1(C).
+Our goal is a representation-level reversible pipeline:
+forward complementary fusion strengthens the fused
+stream, while reverse decoupling preserves modalityrecoverable components to guide each unimodal branch
+for standalone fallback. The key design includes three
+modules. Synergistic Feature Fusion (SFF) enriches each
+single-modality branch with complementary cues through
+selective cross-modal interaction, and Cross-modal Decouple Regularization (CMDR) explicitly separates modalityspecific features from shared ones. Region Decouple Regularization (RDR) ensures that all branches produce semantically consistent outputs.
+These components create a unified feedback loop that
+jointly optimizes the RGB and Thermal encoders, the fusion
+branch, and their respective decoders. Specifically, at the
+inference stage, one simply loads the encoder and decoder
+corresponding to the available modality. This design not
+only preserves the high accuracy of the full-modality system
+but also markedly improves its robustness with missing or
+corrupted inputs.
+Our contributions are threefold:
+A novel fusion and decoupling method that combines RGB and Thermal information and preserves
+modality-recoverable components in the fused representation for reverse guidance.
+• An efficient and inference-capable, parameter-separable,
+three-branch encoder-decoder network assembled with
+the proposed feature fusion and decoupling strategy.
+• State-of-the-art performance on three RGB-T semantic
+segmentation benchmark datasets.
+
+•
+
+The remainder of this paper is organized as follows. Section II reviews related work. Section III details the proposed
+framework and fusion strategy. Section IV presents both
+quantitative and qualitative evaluations. Section V concludes
+the study.
+
+III. RELATED WORK
+A. Feature Fusion in RGB-T Semantic Segmentation
+Leveraging Thermal images to complement RGB images
+has shown great improvements in semantic segmentation
+accuracy. Previous modality fusion methods such as [7],
+[17], [21] integrated through direct feature addition, verifying
+the effectiveness of the feature fusion strategy. Recent work
+focuses on enhancing finer-grained feature fusion to facilitate
+more comprehensive cross-modal interaction. Methods such
+as [22], [14], [23], [24], [25], [26] promote interplay between
+modalities through more elaborate, dedicated fusion modules. Other approaches like [27], [12], [9], [28], [29] leverage
+the powerful long-range dependency modeling capabilities of
+Transformers [30] to perform feature interaction or alignment
+concurrently with feature extraction for different modalities, thereby better promoting modality fusion. While crossmodal interactions have improved segmentation, reliance on
+complete inputs makes fusion models brittle, and when a
+modality is missing, performance collapses.
+B. Decoupling for Missing Modalities
+To mitigate the brittleness of feature-fusion methods under
+modality loss, prior work decouples cross-modal knowledge
+from a fusion model and transfers it to unimodal subnetworks
+[18], [19], [31]. Two paradigms are prevalent. KD-decouple
+methods (e.g., CRM [15], LCM [32]) use the fusion model
+as a teacher to distill modality-specific students. Adaptationdecouple methods (e.g., Adapted [20]) freeze the pretrained
+fusion model and train lightweight, modality-aware adapters
+for specific missing-modality scenarios. Collectively, these
+strategies aim to maintain accuracy with incomplete inputs
+by strengthening unimodal competence. In contrast to prior
+work, our work proposes a fusion–decoupling mechanism to
+simultaneously strengthen the fusion backbone and achieve
+inference-time per-modality decoupling.
+IV. M ETHOD
+A. Framework Overview
+We employ a three-branch encoder-decoder architecture
+for RGB-Thermal semantic segmentation. The RGB and
+Thermal encoders are connected to Synergistic Feature Fusion (SFF), which facilitates multi-scale information complementary and alignment feature to the Fused stream. Three
+decoders (RGB, fused, Thermal) are jointly trained based
+on SegFormer [33]. Additionally, our network introduces
+two novel regularizer modules to enhance robustness: (1)
+Cross-modal Decouple Regularization (CMDR), which separates shared and modality-specific signals, and (2) Region
+Decouple Regularization (RDR), which enforces prediction
+consistency between the fused branch and the RGB or
+Thermal branches in confident regions.
+B. Synergistic Feature Fusion (SFF)
+Let frgb , ft ∈ RC×H×W be the intermediate features from
+the Thermal and RGB encoders, respectively, at a certain
+
+Multi-stage
+Features
+
+𝐼𝑛𝑝𝑢𝑡𝑅𝐺𝐵
+Backbone
+(RGB)
+
+Pooling
+
+Pooling
+
+Conv 1×1
+
+Conv 1×1
+Dot Product
+
+Synergistic
+Feature
+Fusion
+
+×
+
+1-Sigmoid
+
+Conv 1×1
+
+×
+
+Conv 1×1
+
++
+
+Backbone
+(Thermal)
+
+SoftMax
++
+
+×
++
+
+SFF
+
+𝑅𝐷𝑅
+Reg
+
+𝑂𝑢𝑡𝑝𝑢𝑡𝐹𝑢𝑠𝑖𝑜𝑛
+
+𝑅𝐷𝑅
+Reg
+
+𝑂𝑢𝑡𝑝𝑢𝑡𝑇ℎ𝑒𝑟𝑚𝑎𝑙
+
+Decoder
+(Fusion)
+Segment
+Head
+
+×
+
+Concat
+
+Thermal
+Camera
+
+𝐶𝑀𝐷𝑅
+Reg
+
++
+
++
+
+𝑂𝑢𝑡𝑝𝑢𝑡𝑅𝐺𝐵
+
+Decoder
+(RGB)
+Segment
+Head
+
+Thermal Feature
+
+RGB Feature
+
+RGB
+Camera
+
+One-hot
+Masks
+
+𝐶𝑀𝐷𝑅
+Reg
+Decoder
+(RGB)
+Segment
+Head
+
+𝐼𝑛𝑝𝑢𝑡𝑇ℎ𝑒𝑟𝑚𝑎𝑙
+
+Fig. 2: Diagram of encoder–decoder model where SFF executes modality fusion, and CMDR/RDR decouple the fused features to regularize
+and guide each single-modality branch. (The robotic platform is a conceptual illustration.)
+
+scale. To capture channel-wise context, we first generate
+channel-wise descriptors T, R ∈ RC×1×1 for each modality:
+R = FM LP (0.5 · (FGAP (frgb ) + FGM P (frgb )))
+T = FM LP (0.5 · (FGAP (ft ) + FGM P (ft )))
+
+C. Cross-Modal Decouple Regularization (CMDR)
+(1)
+
+Here, FGAP and FGM P denote global average pooling
+and global max pooling, respectively. FM LP is a two-layer
+perceptron that maps the aggregated features into a compact
+representation.
+Inspired by EAEFNet [14], we hypothesize that when the
+RGB and thermal branches have channel-wise attention vectors R, T ∈ RC with opposite signs on a channel (R ⊙ T <
+0), the two modalities attend to different semantics and thus
+provide complementary information. We therefore introduce
+a dynamic gating mechanism that selectively amplifies crossmodal flow on channels satisfying R ⊙ T < 0, producing
+′
+the initially enhanced features frgb
+and ft′ .
+′
+frgb
+= frgb + (1 − σ(T ⊙ R)) ⊛ ft ,
+
+ft′ = ft + (1 − σ(T ⊙ R)) ⊛ frgb .
+
+(2)
+
+where σ denotes the sigmoid function, ⊙ the elementwise product, and ⊛ the channel-wise multiplication. This
+operation allows each branch to enhance its features by
+dynamically borrowing salient information from the other.
+Finally, the two refined feature streams are concatenated
+and passed through 1 × 1 convolution layer. Formally, the
+merged features are obtained by
+′′
+
+frgb,t = f ′ rgb,t ⊗ Sof tM ax(Conv1×1 (f ′ rgb,t ))
+
+(3)
+
+′
+where f ′ rgb,t denotes the concatenated result of frgb
+and ft′ .
+The outputted features of SFF are obtained by:
+′′
+
+′′
+
+ff use = frgb + ft
+
+computationally feasible fusion of information across the two
+modalities.
+
+(4)
+
+This two-stage process, combining channel-wise gating and
+efficient linear spatial attention, ensures a comprehensive and
+
+The goal of Cross-Modal Decouple Regularization
+(CMDR) is to leverage the stronger fused representation—benefiting from the synergistic information of both
+modalities—to decouple modality-specific signals and transfer them to the uni-modal branches. We then impose a regularization that aligns the distributions of uni-modal features
+with their decoupled counterparts, thereby guiding and improving each decoder branch. This enhances the robustness
+and performance of the RGB and Thermal branches when
+used independently.
+Concretely, we invert the modality-alignment component
+in the SFF to derive channel-wise attention from the fused
+feature F with respect to each modality. Building upon the
+concept of sign-consistency, we propose a novel approach
+that leverages the relationship between a uni-modal feature
+and the fused feature as a selection criterion: when R (or
+T) and F activate with the same sign (i.e., R > 0, F > 0
+or R < 0, F < 0), they are considered to be in the same
+state. Extracting the channels of F that share the same state
+with R (or T) effectively isolates the RGB (or Thermal)
+component embedded in the fused representation. Formally,
+
+d
+frgb
+= σ(F ⊙ R) ⊛ ffuse ,
+(5)
+
+ftd = σ(F ⊙ T) ⊛ ffuse ,
+where ⊙ denotes element-wise multiplication, ⊛ denotes
+channel-wise rescaling (attention), and σ(·) is an elementwise sign-consistency gate (mapping positive entries to 1
+d
+and non-positive entries to 0). The tensors frgb
+and ftd are the
+RGB and Thermal features decoupled from the fused feature
+map.
+(i)
+(i)
+(i)
+(i)
+Let frgb , ft , frgb , and ft denote the feature maps from
+the i-th stage of the fused, RGB, and Thermal decoders,
+respectively, where i ∈ S and S is the set of decoder stages
+
+𝑀𝑎𝑠𝑘
+
+where CMDR is applied. We enforce consistency between
+the uni-modal features and their decoupled targets using an
+ℓ2 loss. To ensure that gradients flow only from the fused
+branch to the uni-modal branches (and not vice versa), we
+detach the decoupled targets from the computation graph via
+a stop-gradient operator sg(·). The losses are
+
+
+X
+2
+d(i)
+(i)
+sg frgb − frgb ,
+Lrgb
+CMDR =
+2
+
+i∈S
+
+LtCMDR =
+
+X
+
+
+
+d(i)
+
+sg ft
+
+
+
+(i)
+
+− ft
+
+i∈S
+
+(6)
+
+2
+
+,
+
+(7)
+
+By minimizing this objective, CMDR compels each unimodal decoder to mimic the high-quality, context-aware
+features distilled from the fused branch. Because the targets
+are stop-gradient, this supervision improves the standalone
+RGB and Thermal branches without introducing conflicting
+gradients into the fusion pathway.
+D. Region Decouple Regularization (RDR)
+To improve segmentation performance near object boundaries and other ambiguous regions, we propose Region Decouple Regularization (RDR), which aligns the predictions
+of uni-modal branches to the fused decoder output in a classspecific manner.
+Let pfuse , prgb , pt ∈ RH×W ×C denote the final probability
+maps (after softmax) from the fused, RGB, and Thermal
+decoders, respectively, where C is the number of classes. As
+shown in Fig. 3, we first convert pfuse into one-hot encoded
+class masks, such that each pixel is assigned to a predicted
+semantic class:
+(8)
+
+These class-specific masks are then applied to the fused
+prediction and used to guide uni-modal outputs via masked,
+pixel-wise alignment losses:
+Lrgb
+RDR = L1 (sg(pfuse ⊛ M ), prgb ) ,
+LtRDR = L1 (sg(pfuse ⊛ M ), pt ) ,
+
+𝑂𝑢𝑡𝑝𝑢𝑡
+
+𝑃𝑟𝑔𝑏
+
+𝑃𝑓𝑢𝑠𝑒
+
+𝑃𝑡
+
+Fig. 3: Visualizations of segmentation and feature maps generated
+by the RGB and Thermal decoders for specific regions.
+
+The loss function uses the CrossEntropy [34] for training
+and the total loss combines CMDR and RDR terms:
+
+and the total loss is
+
+M = onehot(pfuse , C).
+
+𝑀𝑎𝑠𝑘
+
+E. Overall Objective
+
+2
+
+t
+LCMDR = Lrgb
+CMDR + LCMDR .
+
+𝑂𝑢𝑡𝑝𝑢𝑡
+
+(9)
+
+where L1 denotes the L1 loss, ⊛ indicates element-wise
+multiplication, and sg(·) is the stop-gradient operator. This
+mechanism enforces consistency within confident regions
+while preventing gradient flow from the fused branch, effectively decoupling modality-specific learning.
+The total RDR loss is formulated as:
+
+
+t
+LRDR = λRDR Lrgb
++
+L
+(10)
+RDR .
+RDR
+By restricting supervision to class-confident regions and
+freezing the fused branch via gradient blocking, the fused
+decoder acts as a fixed guider, while the RGB and Thermal branches learn to align within their respective masked
+regions.
+
+′
+
+LALL = λ · LCM DR + λ · LRDR + λ′′ · LCrossEntropy (11)
+By unifying global feature alignment and localized region
+refinement, our framework robustly adapts to modality degradation, enabling strong uni-modal segmentation performance
+through cross-modal knowledge transfer.
+V. E XPERIMENTS
+We performed detailed experiments to evaluate the performance of our proposed method for different tasks and
+datasets. We also present comparison with existing methods
+that are robust to missing modalities.
+A. Datasets
+We use three datasets to evaluate the performance
+of RTFDNet on RGB-Thermal segmentation tasks.
+MFNet Dataset [7] It records 9 semantic categories in
+urban street scenes, contains 1569 pairs of RGB and Thermal
+images with a size of 640 × 480. Following the split method
+of RTFNet, we use 784 images for training and 392 images
+for validation.
+FMB Dataset [35] is the first RGB-Thermal dataset with a
+pixel annotation ratio of greater than 98%, with 1500 image
+pairs at the resolution of 800 × 600, splitting into 1220/280
+for training and testing with 14 categories which often appear
+in real-world automatic driving tasks.
+PST900 Dataset [6] is a dataset for infrared and visible
+light image, which contains 1,444 pairs of high-quality
+aligned infrared and visible light images, including 715
+daytime image pairs and 729 nighttime image pairs.
+B. Implementation Details
+Our RTFDNet framework adopts a dual-stream architecture built upon SegFormer [33], where both the teacher and
+student branches use Mix Transformer (MiT) encoders [30]
+pretrained on ImageNet as backbones. The model is optimized with AdamW, using a weight decay of 0.0001,
+momentum of 0.9, and initial learning rates of 1 × 10−4
+for the encoder and 6 × 10−4 for the decoder, with crossentropy loss [34]. We empirically set the loss balancing
+weights in Eq.11 as λ = 0.5, λ′ = 1.0, and λ′′ = 1.0.
+For a fair comparison, we adopt the same data augmentations as prior methods, including random scaling (0.5–2.0),
+horizontal flipping, and random-sized cropping. We train on
+
+TABLE II: Performance comparison with existing robust methods for MFNet dataset. RGB and Thermal columns report performance
+when only RGB and only Thermal are available. RGB-T columns report performance when both modalities are available. Average column
+reports average performance when one of the two modalities gets missing. ‘-’ indicates that results for those cells are not published. ∗
+indicates that available code and pretrained models from the authors were used to generate the results.
+Methods
+
+Backbone
+
+RGB
+
+Parameters (M)
+
+Thermal
+
+RGB-T
+
+Average
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+FuseNet [36]
+MFNet [7]
+MDRNet [39]
+VPFNet [41]
+EAEFNet [14]∗
+RTFNet [17]
+FEANet [13]
+
+VGG-16 [37]
+DCNN [38]
+ResNet-50 [40]
+ResNet-50 [40]
+ResNet-50 [40]
+ResNet-152 [40]
+ResNet-152 [40]
+
+284
+8.4
+64.60
+200.4
+254.51
+337.1
+
+11.11
+26.62
+57.11
+48.14
+37.76
+44.89
+15.96
+
+10.31
+24.78
+45.89
+41.08
+35.23
+37.30
+8.69
+
+41.33
+19.65
+41.98
+42.20
+49.93
+26.41
+58.35
+
+36.85
+16.64
+30.19
+35.80
+41.72
+24.57
+48.72
+
+52.40
+45.10
+74.70
+70.91
+75.07
+55.70
+73.20
+
+45.60
+39.70
+56.80
+57.61
+58.95
+53.20
+55.30
+
+34.95
+30.46
+57.93
+53.75
+54.25
+42.33
+49.17
+
+30.92
+27.04
+44.29
+44.83
+45.30
+38.36
+37.57
+
+CRM [15]∗
+StitchFusion [29]∗
+HKDNet [31]
+
+Swin-T [42]
+Swin-T [42]
+Swin-S [42]
+
+74.92
+65.27
+-
+
+68.90
+54.83
+71.40
+
+50.98
+48.78
+52.50
+
+62.61
+45.91
+–
+
+50.22
+41.42
+–
+
+71.83
+66.05
+74.00
+
+59.10
+58.04
+56.50
+
+67.78
+55.60
+–
+
+53.43
+49.41
+–
+
+CMNeXt [9]∗
+Adapted [20]
+
+MiT-B4 [33]
+MiT-B4 [33]
+
+116.56
+-
+
+60.66
+67.18
+
+53.55
+55.22
+
+38.15
+66.70
+
+35.46
+50.89
+
+68.48
+–
+
+59.77
+–
+
+55.76
+–
+
+49.59
+–
+
+Ours (MiT-B2)
+Ours (MiT-B4)
+
+MiT-B2 [33]
+MiT-B4 [33]
+
+50.0
+124.0
+
+65.19
+65.91
+
+55.12
+56.06
+
+69.41
+68.73
+
+53.23
+54.89
+
+72.27
+72.08
+
+58.97
+60.08
+
+68.96
+68.91
+
+55.77
+57.01
+
+TABLE III: Performance comparison with existing robust methods for FMB dataset. RGB and Thermal columns report performance when
+only RGB and only Thermal are available. RGB-T columns report performance when both modalities are available.
+Methods
+
+Backbone
+
+RGB
+
+Parameters (M)
+
+Thermal
+
+RGB-T
+
+Average
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+SegMiF [35]
+StitchFusion [29]
+HKDNet [31]
+
+MiT-B2 [33]
+Swin-T [42]
+Swin-T [42]
+
+65.27
+-
+
+73.50
+65.62
+73.5
+
+50.50
+56.75
+54.0
+
+–
+42.04
+-
+
+–
+34.82
+-
+
+74.5
+70.37
+78.7
+
+54.8
+63.32
+62.4
+
+74.00
+59.34
+76.1
+
+52.65
+51.63
+58.2
+
+Ours (MiT-B2)
+Ours (MiT-B4)
+
+MiT-B2 [33]
+MiT-B4 [33]
+
+50.0
+120.0
+
+68.57
+75.00
+
+62.00
+67.52
+
+65.11
+68.72
+
+58.98
+61.40
+
+72.07
+76.86
+
+66.17
+70.73
+
+68.58
+76.86
+
+62.38
+66.55
+
+TABLE IV: Performance comparison with existing robust methods for PST900 dataset. RGB and Thermal columns report performance
+when only RGB and only Thermal are available. RGB-T columns report performance when both modalities are available.
+Methods
+
+Backbone
+
+RGB
+
+Parameters (M)
+
+Thermal
+
+RGB-T
+
+Average
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+mAcc
+
+mIoU (%)
+
+EAEFNet [14]
+CRM [15]
+StitchFusion [29]∗
+
+ResNet-50 [40]
+Swin-T [42]
+Swin-T [42]
+
+200.4
+117.68
+-
+
+88.52
+88.91
+87.17
+
+83.45
+85.22
+82.11
+
+21.22
+35.87
+20.00
+
+20.63
+35.1
+19.44
+
+91.42
+88.93
+90.43
+
+85.56
+85.89
+84.64
+
+67.05
+71.24
+65.87
+
+63.21
+68.74
+62.06
+
+Ours (MiT-B2)
+
+MiT-B2 [33]
+
+120.0
+
+90.28
+
+84.3
+
+65.47
+
+62.20
+
+87.81
+
+84.15
+
+81.19
+
+76.88
+
+three datasets and align the resolution and schedule to each.
+For MFNet we use 480 × 640 RGB–Thermal inputs and
+train for 300 epochs, and we evaluate using the checkpoint
+that achieves the best validation performance. For PST
+we train for 300 epochs at 720 × 1280, while for FMB
+we also run 300 epochs at 512 × 512. We primarily use
+mean Accuracy (mAcc) and mean Intersection-over-Union
+(mIoU) to quantify segmentation performance. To evaluate
+the robustness of our model, we consider three evaluation
+settings: (i) both modalities present, (ii) missing RGB input,
+and (iii) missing Thermal input.
+
+C. Experimental Results
+As shown in Table III, we benchmark RTFDNet ’s performance across multiple datasets under missing-modality
+conditions. Our proposed RTFDNet demonstrates superior
+performance and robustness on the MFNet dataset. In the
+full-modality (RGB-T) setting, our trained RTFDNet (MITB4) achieves a mIoU of 60.08%, which is competitive with
+leading methods like CMNeXt and surpasses others. The
+primary advantage of our approach is highlighted in the
+missing modalities scenarios.Under missing Thermal inputs,
+mIoU of our model decreases by 4.02% on MFNet, achieves
+56.06%, significantly outperforming strong competitors including CMNeXt at 53.55%, CRM at 50.98%, and Stitch-
+
+Missing Modality Scene
+
+RGB
+
+Thermal
+
+Ground Truth CMNext(RGBT)
+
+CMNext(T)
+
+EAEF(T)
+
+RGB
+
+Thermal
+
+Ground Truth CMNext(RGBT) CMNext(RGB) EAEF(RGB)
+
+CRM(T)
+
+StitchFusion(T)
+
+Ours(T)
+
+Day
+
+CRM(RGB) StitchFusion(RG Ours(RGB)
+B)
+
+Night
+
+Fig. 4: The qualitative results on MFNet dataset.
+
+RGB
+
+RGB
+
+Thermal
+Thermal
+
+Ground
+Truth
+Ground
+Truth
+
+RGB
+Only
+Thermal
+Only
+
+RGB
+Only
+
+RGB-T
+Thermal
+Only
+
+Fig. 6: The qualitative results on PST900 dataset.
+RGB-T
+
+Fig. 5: The qualitative results on FMB dataset.
+
+Fusion at 48.78%. In the Thermal-only condition, our model
+maintains high performance with a mIoU of 54.89%, only
+
+decreases by 5.19% surpassing most existing methods.
+The robustness of our framework is further validated on
+the FMB and PST900 datasets, as shown in Table III and
+Table IV. On the FMB dataset, our RTFDNet achieves
+67.52% in RGB-only setting and 61.40% in Thermal-only
+setting, significantly outperforms other methods. A similar
+trend of significant improvement is observed on the PST900
+
+dataset, where our model consistently achieves the highest
+scores when missing modalities.
+D. Qualitative Analysis
+For qualitative analysis, Figure 4 compares our method
+against several models on the MFNet dataset under modalityincomplete conditions. During daytime, we create a challenging test by evaluating models in a Thermal-only setting,
+where the absence of rich RGB cues causes significant
+degradation in most baselines. Our model, however, maintains sharp boundaries and accurate details. For instance,
+despite weak thermal signatures (row 3), our method fully
+recovers bicycle silhouettes that competing models fail to
+detect. Furthermore, our model accurately delineates both the
+vehicle and the nearly imperceptible curb on the left (row
+4). This superiority is even more pronounced in nighttime,
+RGB-only scenarios (rows 5-8). Here, dark images provide
+negligible information, causing catastrophic failures in baseline methods. While the majority of models completely fail to
+detect pedestrians hidden in these severe low-light conditions
+(rows 5-7), our model consistently and accurately segments
+them, showcasing its exceptional robustness.
+Figure 3 visualizes the attention maps generated by the
+three branches of RTFDNet in the MFNet dataset. The red
+arrows and bounding boxes explicitly illustrate the feature
+transfer process from the multi-modal fusion branch to the
+respective unimodal branches. A key observation is that even
+in their respective disadvantageous scenarios such as the
+RGB branch at night or the Thermal branch in missing
+texture and color information, the unimodal branches can
+still focus their attention on the salient object regions identified by the fusion branch. This demonstrates the efficacy
+of our framework: the capabilities of the fusion branch
+are effectively transferred to guide the unimodal branches
+,significantly enhancing their robustness in missing modalities scenario. Furthermore, we present additional qualitative
+results on the FMB and PST900 datasets in Figure 5 and
+Figure 6, respectively. Even when restricted to a single
+modality, our model continues to correctly identify objects on
+the road and delineate sharp boundaries with only minimal
+loss of detail.
+E. Ablation Study Analysis
+To validate the contribution of each component within
+RTFDNet, we conduct a comprehensive ablation study on
+the MFNet dataset using the MiT-B2 backbone, as shown in
+Table V. Starting from a baseline model that utilizes elementwise addition of the two modal features as fusion mechanism without Synergistic Feature Fusion (SFF), it achieves
+51.2% mIoU on the RGB branch and 47.1% mIoU on the
+Thermal branch. Replacing the plain fusion with our proposed SFF significantly improves the performance to 53.03%
+and 52.68% mIoU on the RGB and Thermal branches,
+respectively, demonstrating its superiority in robust feature
+aggregation over naive fusion strategies. Furthermore, we
+find that individually incorporating either the CMDR or the
+RDR into the baseline also yields consistent and significant
+
+TABLE V: Results of ablation study on the MFNet dataset.
+Baseline
+√
+√
+√
+√
+√
+
+SFF
+
+CMDR
+
+RDR
+
+√
+√
+√
+
+√
+
+√
+√
+
+RGB mIoU (%)
+51.2
+53.03
+52.7
+53.4
+55.12
+
+Thermal mIoU (%)
+47.1
+52.68
+49.3
+50.4
+53.23
+
+performance gains. Finally, the full RTFDNet framework,
+which synergistically integrates CGF, CMDR, and RDR,
+achieves the highest performance, reaching 55.12% mIoU for
+the RGB branch and 53.23% mIoU for the Thermal branch,
+firmly validating the complementary nature of our fusiondecoupling design.
+Table VI details computational efficiency on an NVIDIA
+A100. During sensor failure, our architecture seamlessly falls
+back to a unimodal branch. For MiT-B2, this fallback halves
+FLOPs (60.9G to 31.5G) and nearly doubles FPS (30.6 to
+∼58.3), ensuring real-time efficiency for deployable robotics.
+TABLE VI: Efficiency comparison during complete and missing
+modality inference on NVIDIA A100 (40G).
+Backbone
+
+Modality
+
+Params
+
+FLOPs
+
+FPS
+
+mIoU (%)
+
+Single B2
+Single B2
+Ours (B2)
+
+RGB-only
+T-only
+RGB+T
+
+27.36 M
+27.36 M
+50.0 M
+
+31.5 G
+31.5 G
+60.9 G
+
+58.3
+58.3
+30.6
+
+55.12
+53.23
+58.97
+
+Single B4
+Single B4
+Ours (B4)
+
+RGB-only
+T-only
+RGB+T
+
+63.2 M
+63.2 M
+124.0 M
+
+75.5 G
+75.5 G
+147.0 G
+
+27.6
+27.6
+12.9
+
+56.06
+54.89
+60.08
+
+VI. CONCLUSION
+In this paper, we address the dramatic performance drop in
+multimodal semantic segmentation under missing modalities
+by proposing the RTFDNet RGB-T segmentation framework.
+Unlike traditional robustness methods, RTFDNet unifies efficient feature fusion and modality decoupling in a threebranch architecture, achieving strong segmentation with
+complete inputs and robust performance when a modality
+is absent. Specifically, SFF integrates complementary crossmodal cues, while CMDR and RDR strengthen each unimodal branch for standalone inference. This design enables
+parameter-separable inference and true modality decoupling.
+Future work will extend this fusion–decoupling framework
+to additional modalities (e.g., LiDAR or event cameras) and
+to other perception tasks such as object detection.
+R EFERENCES
+[1] Peiyan Li, Yixiang Chen, Hongtao Wu, Xiao Ma, Xiangnan Wu, Yan
+Huang, Liang Wang, Tao Kong, and Tieniu Tan. Bridgevla: Inputoutput alignment for efficient 3d manipulation learning with visionlanguage models, 2025.
+[2] Tianyuan Yuan, Yicheng Liu, Chenhao Lu, Zhuoguang Chen, Tao
+Jiang, and Hang Zhao. Depthvla: Enhancing vision-language-action
+models with depth-aware spatial reasoning, 2025.
+[3] Wenxuan Song, Han Zhao, Pengxiang Ding, Can Cui, Shangke Lyu,
+Yaning Fan, and Donglin Wang. Germ: A generalist robotic model
+with mixture-of-experts for quadruped robot. In 2024 IEEE/RSJ
+International Conference on Intelligent Robots and Systems (IROS),
+pages 11879–11886, 2024.
+[4] Pushmeet Kohli Nathan Silberman, Derek Hoiem and Rob Fergus.
+Indoor segmentation and support inference from rgbd images. In
+ECCV, 2012.
+[5] Moritz Menze and Andreas Geiger. Object scene flow for autonomous
+vehicles. In Conference on Computer Vision and Pattern Recognition
+(CVPR), 2015.
+
+[6] Shreyas S. Shivakumar, Neil Rodrigues, Alex Zhou, Ian D. Miller,
+Vijay Kumar, and Camillo J. Taylor. Pst900: Rgb-thermal calibration,
+dataset and segmentation network. In 2020 IEEE International
+Conference on Robotics and Automation (ICRA), pages 9441–9447,
+2020.
+[7] Qishen Ha, Kohei Watanabe, Takumi Karasawa, Yoshitaka Ushiku,
+and Tatsuya Harada. Mfnet: Towards real-time semantic segmentation
+for autonomous vehicles with multi-spectral scenes. In 2017 IEEE/RSJ
+International Conference on Intelligent Robots and Systems (IROS),
+pages 5108–5115. IEEE, 2017.
+[8] Linfeng Tang, Jiteng Yuan, Hao Zhang, Xingyu Jiang, and Jiayi Ma.
+Piafusion: A progressive infrared and visible image fusion network
+based on illumination aware. Information Fusion, 2022.
+[9] Jiaming Zhang, Ruiping Liu, Hao Shi, Kailun Yang, Simon Reiß,
+Kunyu Peng, Haodong Fu, Kaiwei Wang, and Rainer Stiefelhagen.
+Delivering arbitrary-modal semantic segmentation. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 1136–1147, 2023.
+[10] Junjie Hu, Xiyue Guo, Junfeng Chen, Guanqi Liang, Fuqin Deng, and
+Tin Lun Lam. A two-stage unsupervised approach for low light image
+enhancement. IEEE Robotics and Automation Letters, 6(4):8363–
+8370, 2021.
+[11] Xing Liu, Masanori Suganuma, Zhun Sun, and Takayuki Okatani.
+Dual residual networks leveraging the potential of paired operations
+for image restoration. In Proceedings of the IEEE Conference on
+Computer Vision and Pattern Recognition, pages 7007–7016, 2019.
+[12] Jiaming Zhang, Huayao Liu, Kailun Yang, Xinxin Hu, Ruiping Liu,
+and Rainer Stiefelhagen. Cmx: Cross-modal fusion for rgb-x semantic
+segmentation with transformers. IEEE Transactions on intelligent
+transportation systems, 24(12):14679–14694, 2023.
+[13] Fuqin Deng, Hua Feng, Mingjian Liang, Hongmin Wang, Yong Yang,
+Yuan Gao, Junfeng Chen, Junjie Hu, Xiyue Guo, and Tin Lun Lam.
+Feanet: Feature-enhanced attention network for rgb-thermal real-time
+semantic segmentation. In 2021 IEEE/RSJ international conference on
+intelligent robots and systems (IROS), pages 4467–4473. IEEE, 2021.
+[14] Mingjian Liang, Junjie Hu, Chenyu Bao, Hua Feng, Fuqin Deng,
+and Tin Lun Lam. Explicit attention-enhanced fusion for rgb-thermal
+perception tasks. IEEE Robotics and Automation Letters, 8(7):4060–
+4067, 2023.
+[15] Ukcheol Shin, Kyunghyun Lee, In So Kweon, and Jean Oh. Complementary random masking for rgb-thermal semantic segmentation.
+In 2024 IEEE International Conference on Robotics and Automation
+(ICRA), pages 11110–11117, 2024.
+[16] Jiayi Zhao, Fei Teng, Kai Luo, Guoqiang Zhao, Zhiyong Li, Xu Zheng,
+and Kailun Yang. Unveiling the potential of segment anything model 2
+for rgb-thermal semantic segmentation with language guidance. arXiv
+preprint arXiv:2503.02581, 2025.
+[17] Yuxiang Sun, Weixun Zuo, and Ming Liu. Rtfnet: Rgb-thermal fusion
+network for semantic segmentation of urban scenes. IEEE Robotics
+and Automation Letters, 4(3):2576–2583, 2019.
+[18] Yeong-Hyeon Kim, Ukcheol Shin, Jinsun Park, and In So Kweon.
+Ms-uda: Multi-spectral unsupervised domain adaptation for thermal
+image semantic segmentation. IEEE Robotics and Automation Letters,
+6(4):6497–6504, 2021.
+[19] Zhen Feng, Yanning Guo, and Yuxiang Sun. Cekd: Cross-modal edgeprivileged knowledge distillation for semantic scene understanding
+using only thermal images. IEEE Robotics and Automation Letters,
+8(4):2205–2212, 2023.
+[20] Md Kaykobad Reza, Ashley Prater-Bennette, and M Salman Asif.
+Robust multimodal learning with missing modalities via parameterefficient adaptation. IEEE Transactions on Pattern Analysis and
+Machine Intelligence, 2024.
+[21] Yuxiang Sun, Weixun Zuo, Peng Yun, Hengli Wang, and Ming Liu.
+Fuseseg: Semantic segmentation of urban scenes based on rgb and
+thermal data fusion. IEEE Transactions on Automation Science and
+Engineering, 18(3):1000–1011, 2020.
+[22] Qiang Zhang, Shenlu Zhao, Yongjiang Luo, Dingwen Zhang, Nianchang Huang, and Jungong Han. Abmdrnet: Adaptive-weighted bidirectional modality difference reduction network for rgb-t semantic
+segmentation. In Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, pages 2633–2642, 2021.
+[23] Hui Li and Xiao-Jun Wu. Crossfuse: A novel cross attention mechanism based infrared and visible image fusion approach. Information
+Fusion, 103:102147, 2024.
+
+[24] Wujie Zhou, Jinfu Liu, Jingsheng Lei, Lu Yu, and Jenq-Neng Hwang.
+Gmnet: Graded-feature multilabel-learning network for rgb-thermal
+urban scene semantic segmentation. IEEE Transactions on Image
+Processing, 30:7790–7802, 2021.
+[25] Shaohua Dong, Wujie Zhou, Caie Xu, and Weiqing Yan. Egfnet: Edgeaware guidance fusion network for rgb–thermal urban scene parsing.
+IEEE Transactions on Intelligent Transportation Systems, 25(1):657–
+669, 2023.
+[26] Wujie Zhou, Xinyang Lin, Jingsheng Lei, Lu Yu, and Jenq-Neng
+Hwang. Mffenet: Multiscale feature fusion and enhancement network
+for rgb–thermal urban road scene parsing. IEEE Transactions on
+Multimedia, 24:2526–2538, 2021.
+[27] Jiahang Li, Peng Yun, Qijun Chen, and Rui Fan. Hapnet: Toward superior rgb-thermal scene parsing via hybrid, asymmetric, and progressive
+heterogeneous feature fusion. arXiv preprint arXiv:2404.03527, 2024.
+[28] Daixun Li, Weiying Xie, Mingxiang Cao, Yunke Wang, Jiaqing Zhang,
+Yunsong Li, Leyuan Fang, and Chang Xu. Fusionsam: Latent space
+driven segment anything model for multimodal fusion and segmentation. arXiv preprint arXiv:2408.13980, 2024.
+[29] Bingyu Li, Da Zhang, Zhiyuan Zhao, Junyu Gao, and Xuelong Li.
+Stitchfusion: Weaving any visual modalities to enhance multimodal
+semantic segmentation. arXiv preprint arXiv:2408.01343, 2024.
+[30] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani,
+Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An image
+is worth 16x16 words: Transformers for image recognition at scale.
+arXiv preprint arXiv:2010.11929, 2020.
+[31] Yujia Sun, Weisheng Dong, Shuaibo Wang, Peng Wu, Mingtao Feng,
+Xin Li, and Guangming Shi. Distilling hierarchical knowledge
+from multimodal fusion for unimodal image segmentation. IEEE
+Transactions on Circuits and Systems for Video Technology, pages
+1–1, 2025.
+[32] Xu Zheng, Haiwei Xue, Jialei Chen, Yibo Yan, Lutao Jiang, Yuanhuiyi
+Lyu, Kailun Yang, Linfeng Zhang, and Xuming Hu. Learning robust
+anymodal segmentor with unimodal and cross-modal distillation. arXiv
+preprint arXiv:2411.17141, 2024.
+[33] Enze Xie, Wenhai Wang, Zhiding Yu, Anima Anandkumar, Jose M
+Alvarez, and Ping Luo. Segformer: Simple and efficient design
+for semantic segmentation with transformers. Advances in neural
+information processing systems, 34:12077–12090, 2021.
+[34] Anqi Mao, Mehryar Mohri, and Yutao Zhong. Cross-entropy loss
+functions: theoretical analysis and applications. In Proceedings of
+the 40th International Conference on Machine Learning, ICML’23.
+JMLR.org, 2023.
+[35] Jinyuan Liu, Zhu Liu, Guanyao Wu, Long Ma, Risheng Liu, Wei
+Zhong, Zhongxuan Luo, and Xin Fan. Multi-interactive feature
+learning and a full-time multi-modality benchmark for image fusion
+and segmentation. In Proceedings of the IEEE/CVF international
+conference on computer vision, pages 8115–8124, 2023.
+[36] Caner Hazirbas, Lingni Ma, Csaba Domokos, and Daniel Cremers.
+Fusenet: Incorporating depth into semantic segmentation via fusionbased cnn architecture. In Asian conference on computer vision, pages
+213–228. Springer, 2016.
+[37] Karen Simonyan and Andrew Zisserman.
+Very deep convolutional networks for large-scale image recognition. arXiv preprint
+arXiv:1409.1556, 2014.
+[38] Fisher Yu and Vladlen Koltun. Multi-scale context aggregation by
+dilated convolutions. arXiv preprint arXiv:1511.07122, 2015.
+[39] Yingpeng Dai, Junzheng Wang, Jiehao Li, and Jing Li. Mdrnet:
+A lightweight network for real-time semantic segmentation in street
+scenes. Assembly Automation, 41(6):725–733, 2021.
+[40] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep
+residual learning for image recognition. In Proceedings of the IEEE
+conference on computer vision and pattern recognition, pages 770–
+778, 2016.
+[41] Baihong Lin, Zengrong Lin, Yulan Guo, Yulan Zhang, Jianxiao Zou,
+and Shicai Fan. Variational probabilistic fusion network for rgb-t
+semantic segmentation. arXiv preprint arXiv:2307.08536, 2023.
+[42] Ze Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng Zhang,
+Stephen Lin, and Baining Guo. Swin transformer: Hierarchical vision
+transformer using shifted windows. In Proceedings of the IEEE/CVF
+international conference on computer vision, pages 10012–10022,
+2021.
+
+

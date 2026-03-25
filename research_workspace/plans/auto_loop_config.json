@@ -1,0 +1,71 @@
+{
+  "repo_root": "/root/Drone-SAM-Adapter",
+  "launcher": "scripts/run_ddp_train.sh",
+  "work_dir_root": "/root/autodl-tmp/work_dirs/auto_loop",
+  "artifacts_dir": "research_workspace/artifacts/auto_loop_strict_abs0",
+  "train_env": {
+    "PYTHON_BIN": "/root/miniconda3/envs/torch211/bin/python",
+    "DIST_BACKEND": "nccl",
+    "NCCL_LIB_DIR": "/root/miniconda3/envs/torch211/lib/python3.12/site-packages/nvidia/nccl/lib",
+    "NCCL_PREFLIGHT": "1",
+    "NPROC_PER_NODE": "2",
+    "CUDA_VISIBLE_DEVICES": "0,1"
+  },
+  "base_train_flags": [
+    "--model-variant", "rrf_dsd",
+    "--data-root", "/root/autodl-tmp/datasets/FMB",
+    "--epochs", "30",
+    "--batch-size", "8",
+    "--num-workers", "12",
+    "--crop-size", "512",
+    "--save-freq", "30",
+    "--val-freq", "5",
+    "--no-ddp-find-unused-params"
+  ],
+  "eval": {
+    "script": "segmentation/test_rrf_dsd.py",
+    "python_bin": "/root/miniconda3/envs/torch211/bin/python",
+    "data_root": "/root/autodl-tmp/datasets/FMB",
+    "splits": ["val", "test"],
+    "extra_flags": ["--absent-score", "0.0"],
+    "eval_resize_mode": "letterbox",
+    "crop_size": 512,
+    "batch_size": 1,
+    "num_workers": 4
+  },
+  "recipes": [
+    {
+      "name": "strict_bs8_cmr056_aux010_seed42_r4",
+      "tags": ["strict_abs0", "bs8_mainline", "confirm"],
+      "flags": [
+        "--use-ohem", "--cat-max-ratio", "0.56", "--detail-aux-weight", "0.10", "--seed", "42"
+      ]
+    },
+    {
+      "name": "strict_bs8_cmr056_aux010_seed7_r4",
+      "tags": ["strict_abs0", "bs8_mainline", "seed_sweep"],
+      "flags": [
+        "--use-ohem", "--cat-max-ratio", "0.56", "--detail-aux-weight", "0.10", "--seed", "7"
+      ]
+    },
+    {
+      "name": "strict_bs8_cmr056_aux011_seed42_r4",
+      "tags": ["strict_abs0", "bs8_mainline", "micro_tune"],
+      "flags": [
+        "--use-ohem", "--cat-max-ratio", "0.56", "--detail-aux-weight", "0.11", "--seed", "42"
+      ]
+    },
+    {
+      "name": "strict_bs8_cmr057_aux010_seed42_r4",
+      "tags": ["strict_abs0", "bs8_mainline", "micro_tune"],
+      "flags": [
+        "--use-ohem", "--cat-max-ratio", "0.57", "--detail-aux-weight", "0.10", "--seed", "42"
+      ]
+    }
+  ],
+  "feedback": {
+    "gap_threshold": 5.0,
+    "stagnation_delta": 0.3,
+    "gap_penalty": 0.25
+  }
+}

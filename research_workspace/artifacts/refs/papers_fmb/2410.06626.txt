@@ -1,0 +1,1003 @@
+Open-RGBT: Open-vocabulary RGB-T Zero-shot Semantic
+Segmentation in Open-world Environments
+
+arXiv:2410.06626v1 [cs.CV] 9 Oct 2024
+
+Meng Yu, Luojie Yang, Xunjie He, Yi Yang, Yufeng Yue*, Member, IEEE
+Abstract— Semantic segmentation is a critical technique for
+effective scene understanding. Traditional RGB-T semantic
+segmentation models often struggle to generalize across diverse
+scenarios due to their reliance on pretrained models and
+predefined categories. Recent advancements in Visual Language Models (VLMs) have facilitated a shift from closedset to open-vocabulary semantic segmentation methods. However, these models face challenges in dealing with intricate
+scenes, primarily due to the heterogeneity between RGB and
+thermal modalities. To address this gap, we present OpenRGBT, a novel open-vocabulary RGB-T semantic segmentation
+model. Specifically, we obtain instance-level detection proposals
+by incorporating visual prompts to enhance category understanding. Additionally, we employ the CLIP model to assess
+image-text similarity, which helps correct semantic consistency
+and mitigates ambiguities in category identification. Empirical
+evaluations demonstrate that Open-RGBT achieves superior
+performance in diverse and challenging real-world scenarios,
+even in the wild, significantly advancing the field of RGB-T
+semantic segmentation. The project page of Open-RGBT is
+available at https://OpenRGBT.github.io/.
+
+I. INTRODUCTION
+Semantic segmentation plays a fundamental role in enabling scene understanding for unmanned systems, especially
+in practical applications such as autonomous driving [1],
+robotic manipulation [2], and remote sensing [3]. Although
+previous works [10], [20], [21] have achieved remarkable
+segmentation performance on standard RGB-based datasets,
+they often falter under conditions of reduced visibility caused
+by adverse weather [46] or in poor illumination settings
+[11]. This challenge is compounded by the need for openworld adaptability [47]. To address these limitations, many
+researchers have introduced thermal/infrared images to enhance the performance of visual perception tasks [12], [14]–
+[16], [45]. Despite significant progress, these semantic segmentation models are predominantly trained on pre-defined
+categories, limiting their ability to generalize to unseen
+classes.
+Open-vocabulary learning [4] has been proposed to address the aforementioned issues and to extend the capabilities
+of segmentation tasks. With the rapid development of pretrained Visual Language Models (VLMs) such as CLIP
+[22], previous works [24], [27], [32]–[34] have leveraged
+these models’ open-vocabulary classification capabilities to
+implement RGB image segmentation. The VLMs provide a
+This work is supported by the National Natural Science Foundation of
+China under Grant 92370203, 62233002. (Corresponding Author: Yufeng
+Yue, yueyufeng@bit.edu.cn)
+Meng Yu, Luojie Yang, Xunjie He, Yi Yang, and Yufeng Yue are with
+School of Automation, Beijing Institute of Technology, Beijing 100081,
+China.
+
+Fig. 1.
+We introduce Open-RGBT, a novel open-vocabulary RGB-T
+semantic segmentation model, which facilitates zero-shot semantic segmentation across various open-world scenarios.
+
+new perspective for achieving RGB-T zero-shot semantic
+segmentation, but extending these models to the RGB-T
+domain still faces challenges. For example, in these approaches, ZSSeg [33], ZegFormer [32], and Ov-seg [24] assign semantics to the mask proposals by applying pre-trained
+CLIP model. However, the effectiveness of these models
+relies heavily on the accurate generation and classification of
+masks. Since CLIP is trained exclusively on RGB images,
+the domain gap between detected proposals and the training
+datasets often leads to suboptimal classification of masked
+images. On the other hand, Grounded-SAM [25] employs the
+open-vocabulary detector Grounding DINO [23] to generate
+detection proposals, which are then refined using SAM [10]
+for segmentation. However, the performance of GroundedSAM also hinges on the accurate detection of objects and
+may struggle with ambiguous category understanding due to
+the heterogeneity among different modalities.
+These challenges highlight that both misclassifications and
+missed detections can result in an incomplete understanding.
+Moreover, relying on a single modality is insufficient for
+models to comprehensively understand the open world. To
+address these limitations, we propose Open-RGBT, a zeroshot framework designed to facilitate semantic understanding
+of arbitrary text queries.
+Specifically, we first generate instance-level detection
+proposals from the fused images using an off-the-shelf
+foundation model. However, this process may result in an
+ambiguous understanding of specific categories in RGB-T
+datasets, owing to variations in data distribution. To address
+this, we incorporate visual prompts to enhance the detection
+of novel or complex categories. Unlike previous methods that
+
+may miss detections, our approach allows for the acquisition
+of more coarse results even in such cases. Additionally,
+recognizing that these coarse detections may carry semantic
+ambiguity, we employ the CLIP model to ensure semantic
+consistency in the detection proposals. This strategy enables
+Open-RGBT to achieve accurate detection results, which
+can subsequently be segmented and captioned for a deeper
+understanding of the scene. Unlike dataset-specific models,
+Open-RGBT does not require extensive training and is
+adaptable to a wide array of datasets. To foster community
+engagement, we have assembled a collection of 273 paired
+RGB-T images in the real-world, along with corresponding
+semantic ground truth, called MSVID dataset. This dataset
+encompasses various road conditions, including rain, haze,
+and varying illumination.
+In summary, the contributions of this paper are summarized as follows:
+1) We introduce open-vocabulary models for RGB-T
+semantic segmentation, enhancing the generalization
+capabilities and semantic segmentation performance.
+2) The model incorporates optimized visual prompts and
+semantic consistency correction module, enabling a
+deeper understanding and precise categorization of
+novel or unique classes within specific datasets.
+3) We release a multi-weather RGB-T dataset with semantic annotations in open environments. Extensive
+evaluations indicate that Open-RGBT achieves superior zero-shot performance in real-world scenes.
+II. RELATED WORK
+A. Closed-set RGB-T Semantic Segmentation
+Single-modal semantic segmentation networks, such as
+SegNet [20] and DeepLab [21], are often vulnerable to
+extreme conditions, like adverse weather or poor illumination
+conditions. To overcome these limitations, researchers have
+explored multimodal fusion techniques to exploit the complementary information. Specifically, they proposed various
+types of feature fusion modules, such as the heterogeneous
+feature-level fusion [12], [14], [15], multi-scale feature fusion [5]–[7], [19], and attention-weighted fusion [16]–[18].
+Although the above methods have been implemented to
+obtain more complementary and rich information, leading
+to outstanding performance on MFNet dataset [12] and
+PST900 dataset [15], these models have poor generalization
+on new datasets with different data distribution. Meanwhile,
+they need to train separate models on different datasets,
+increasing the computational cost and complexity. Besides,
+these models are mainly trained with pre-defined categories,
+which are hard to generalize to unseen classes.
+B. Open-vocabulary Semantic Segmentation
+To overcome the limitation of previous closed-set segmentation methods, open-vocabulary semantic segmentation aims
+to understand an image with arbitrary categories described
+by texts. With the impressive progress of pre-trained VLMs
+(i.e., CLIP [22], ALIGN [28]), an increasing number of
+
+methods are attempting to extend their semantic understanding capabilities to vision perception tasks. LSeg [27] and
+OpenSeg [34] align the segment-level visual features with
+text embeddings via region-word grounding.
+Subsequent work (ZSSeg [33], ZegFormer [32], and Ovseg [24]) decouple the problem into a two-stage task, namely
+class-agnostic segmentation and mask classification. They
+firstly generate class-agnostic mask proposals, and then utilize pre-trained CLIP model to obtain language-aligned visual features and classify each mask. In contrast, GroundedSAM [25] uses Grounding DINO [23] as an open-set object
+detector to generate detection boxes based on arbitrary text
+inputs, and then leverages SAM [10] model to segment
+these regions. Notably, these models are limited by accurate
+proposal generation. Furthermore, the inherent heterogeneity
+between modalities may hinder category understanding in the
+thermal domain. In an open-world context, it is imperative
+for the model to exhibit greater adaptability.
+To address the above challenges, Open-RGBT takes the
+paired RGB-T images as input and leverages a two-stage
+pipeline. Instead, with joint visual prompts and semantic consistency correction, Open-RGBT facilitates open-vocabulary
+RGB-T semantic segmentation in complex scenes.
+III. METHODOLOGY
+A. Framework Overview
+Open-RGBT takes a pair of visible-thermal images I =
+[IRGB , IT ] with a predefined set of semantic classes T =
+{t1 , t2 , . . . , tK } as input, and produces a set of N mask
+proposals Mn and corresponding caption predictions Cn of
+the observed scene as output, where n = 1, 2, . . . , N .
+The overall Open-RGBT framework, as depicted in Fig.
+2, consists of two successive stages. The first one generates
+detection boxes for objects or regions from fused images
+by leveraging the textual information and visual prompts
+as conditions. Then, the detected proposals serve as the
+prompts for the segmentation model to generate precise mask
+annotations. By sequentially executing the two stages, OpenRGBT acquires a profound understanding of the scene.
+B. RGB-T Open-vocabulary Object Detection
+This stage takes paired RGB-T images as input and utilizes
+classes as text prompts to generate bounding boxes. It is
+composed of three parts: Attention-based RGB-T Adaptive
+Fusion, Detection with Multiple Prompts, and Semantic Consistency Correction Module (SCCM). Firstly, RGB-T images
+are adaptively fused, ensuring that the most informative
+features from each modality are preserved and integrated into
+a single, enhanced image representation. Secondly, visual and
+text prompts are incorporated to better understand and detect
+novel or complex categories. Lastly, in addition to Grounding
+DINO’s prediction, we employ CLIP model to correct the
+semantic consistency of the detection proposals, so as to
+avoid semantic ambiguity and achieve accurate results.
+
+Fig. 2.
+
+The overall framework of Open-RGBT consists of two stages: RGB-T Open-vocabulary Object Detection and Scene Semantic Understanding.
+
+1) Attention-based RGB-T Adaptive Fusion: Considering the varying richness and informativeness of different
+modalities present in the input images, we employ attention
+mechanism to obtain dynamic fusion weights for combining
+these two modalities. Inspired by PSFusion [29], we adopt
+the image fusion path from the the scene restoration branch.
+Given a pair of registered visible image IRGB ∈ RH×W ×3
+and thermal image IT ∈ RH×W ×1 , the image fusion path
+ultimately synthesizes the fused image If ∈ RH×W ×3 .
+Here, the global-local attention mechanism is employed,
+focusing on both global context and local details based on
+the input data. By updating the fusion weights in this selfadaptive manner, the proposed fusion approach can maintain
+effective fusion even under conditions where the quality of
+one modality may be compromised or suboptimal.
+2) Detection with Multiple Prompts: With the the fused
+image If and given categories T, we can feed them together into the Grounding DINO [23] model to obtain the
+coarse detection boxes and corresponding class id. Although
+Grounding DINO can yield excellent performance in openset detection, it may have an ambiguous understanding of
+specific categories in certain datasets due to the disparity in
+data distribution, leading to false or missed detections.
+To address this issue, we incorporate visual prompts to
+enhance object understanding. When encountering a novel
+category or one whose semantics are inconsistent with predefined categories, only several visual examples are required
+to understand the category in an in-context manner.
+Specifically, the T-Rex2 [30] model is leveraged to generate visual prompt embeddings and infer the detection boxes.
+Firstly, by cropping the desired area, we can obtain J
+specified 4D normalized boxes bj = (xj , yj , wj , hj ), where
+j = 1, 2, . . . , J, xj , yj represent the horizontal and vertical
+coordinates in the upper left corner of the bounding box,
+respectively, and wj , hj represents the width and height
+of the bounding box, respectively. These coordinate inputs
+are encoded into position embeddings through a fixed sinecosine embedding layer. Subsequently, a linear layer projectd
+these embeddings into a uniform dimension:
+B = Linear(PE(b1 , . . . , bJ ); θB ) : RJ×4D → RJ×D
+
+(1)
+
+where PE stands for position embedding and Linear(·; θ)
+
+indicate a linear project operation with parameter θ.
+Next, to aggregate features from other visual prompts, the
+T-Rex2 model introduces global position embeddings B ′ ,
+derived from global normalized coordinates [0.5, 0.5, 1, 1],
+thereby constructing the input query embedding Q. For the
+′
+j-th prompt, the query feature Qj after cross attention is
+computed as:
+′
+
+L
+
+Qj = MSDeformAttn(Qj , bj , {fl }l=1 )
+
+(2)
+
+where fl ∈ RCl ×Hl ×Wl (l = 1, 2, . . . , L) denotes the feature
+maps output from the image encoder, and L is the number
+of feature map layers.
+Then, a self-attention layer to regulate the relationships
+among different queries and a feed-forward layer for projection are employed. The global content query output is used
+as the final visual prompt embedding V :
+′
+
+V = FFN(SelfAttn(Q ))[−1]
+
+(3)
+
+Finally, a DETR-like decoder is employed for box prediction. The whole detection proposals can be expressed as:
+vN = Detvp (V, If ) ∪ Detgd (T, If )
+
+(4)
+
+where N denotes the number of detection proposals,
+Detvp (·, ·) and Detgd (·, ·) represent the detection process
+with visual prompts and with Grounding DINO, respectively.
+By integrating text and visual prompts, the precision and accuracy of the detection model can be significantly improved.
+3) Semantic Consistency Correction: Due to potential detection errors for Grounding DINO in challenging scenes, we
+employ CLIP [22] model to rectify the semantic information
+by calculating the similarity of the initial detection proposals
+and all categories, seen in Fig. 3.
+After detection with multiple prompts, this process
+yields N detection proposals, which can be denoted as
+v1 , v2 , . . . , vN , each corresponding to an initial class id
+In
+In
+idIn
+1 , id2 , . . . , idN , respectively.
+Then, we leverage a pre-trained CLIP model to independently encode both the semantic categories and the image
+proposals, obtaining the corresponding visual embeddings
+ev1 , ev2 , . . . , evN , which are collectively denoted as evn for n =
+1, 2, . . . , N , as well as the text embeddings et1 , et2 , . . . , etK ,
+
+able to segment the primary objects within each bounding
+box and generate descriptive captions for them. This process
+yields a set of masks {Mn }n=1,2,...,N and a set of captions
+{Cn }n=1,2,...,N .
+
+Fig. 3.
+
+Semantic Consistency Correction Module.
+
+denoted as etk for k = 1, 2, . . . , K. The similarity scores
+between the visual and text embeddings are computed as
+follows:
+exp ⟨evn , etk ⟩
+Fnk =
+(5)
+K
+X
+v
+t
+1+
+exp en , ek
+k=1
+
+where evn represents the n-th visual embedding, etk denotes
+the k-th text embedding, and Fnk corresponds to the predicted confidence of the n-th visual proposal belonging to
+the k-th class. The ⟨·, ·⟩ represents the dot product operation.
+For each detection proposal, we then select the class
+with the highest prediction score FnP r = max(Fnk ) as the
+Pr
+r
+predicted class label idP
+n = k.index(Fn ). If the predicted
+Pr
+category idn matches the initial detection category idIn
+n , it
+indicates that the semantic understanding is consistent, and
+no further correction is required.
+However, if the predicted category differs from the initial
+detection, we need to perform additional checks based on the
+following conditions. Firstly, we obtain the confidence score
+corresponding to the initial detection category:
+FnIn = Fnk k=idIn
+
+(6)
+
+n
+
+Then, we apply the following judgment criteria:
+ Pr
+Fn − FnIn ≥ th1
+FnP r ≥ th2
+
+(7)
+
+where th1 and th2 are two constant thresholds used to
+determine whether the predicted class should be updated.
+Overall, by incorporating this module, we can potentially
+improve the overall accuracy and robustness of the object
+classification task for the RGB-T images.
+C. Zero-shot Semantic Segmentation
+With the detection bounding boxes corresponding to each
+detection proposal obtained above, Open-RGBT can be extended to perform a variety of perception tasks, including
+zero-shot semantic segmentation. By integrating the Tokenize
+Anything via Prompting (TAP) model [44], the model is
+
+Fig. 4.
+
+Our experimental platform and constructed MSVID dataset.
+
+IV. EXPERIMENT
+In this section, we aim to validate Open-RGBT, through
+the following specific questions:
+1) Without training any model, can Open-RGBT achieve
+RGB-T zero-shot semantic segmentation?
+2) How well does Open-RGBT adapt to adverse weather
+and illumination-varying conditions?
+3) What other potential scenes can be applied by this
+RGB-T open-vocabulary learning settings?
+A. RGB-T Zero-shot Semantic Segmentation
+1) Datasets and Evaluation Metrics: We adopt four commonly uses datasets for validation: MFNet [12], PST900
+[15], M3FD [9], and Roadscene [13]. For the first two
+datasets, corresponding semantic labels are provided, while
+for the latter two, we annotate three familiar road participants
+(car, person, and bike).
+Furthermore, we use our own experimental vehicle platform to collect RGB-T image pairs under diverse environmental conditions, and construct our MSVID dataset with
+ground-truth semantic segmentation labels, seen in Fig. 4.
+For the evaluation metrics, we use the mean accuracy (mAcc)
+and the mean IoU (mIoU).
+2) Comparison on Multiple Datasets: We compare our
+method with 9 closed-set RGB-T semantic segmentation
+methods (MFNet [12], RTFNet [14], GMNet [16], EGFNet
+[17], CCFFNet [18], LASNet [7], semanticRT [5], EAEFNet
+[19], and CAINet [6]) and three open-vocabulary semantic segmentation methods (Ov-seg [24], Seem [26], and
+Grounded-SAM [25]). Given that these open-vocabulary
+models are single-modal, they are tested separately using
+both RGB and thermal images.
+Quantitative Comparisons. Seen in Table I, our method
+achieves the highest mAcc and mIoU across all methods,
+outperforming the second-best method by 2.30% and 9.87%,
+respectively. Compared to the closed-set approaches, though
+our model’s mAcc is not optimal on the MFNet and PST900
+datasets, the differences are marginal at 2.02% and 0.52%,
+
+TABLE I
+C OMPARISON OF QUALITATIVE SEMANTIC SEGMENTATION RESULTS (%) ON FIVE DIVERSE DATASETS .
+
+Method
+
+Closed-set
+
+MFNet [12]
+RTFNet [14]
+GMNet [16]
+EGFNet [17]
+CCFFNet [18]
+LASNet [7]
+semanticRT [5]
+EAEFNet [19]
+CAINet [6]
+
+Openvocabulary
+
+OV-seg [24] (RGB)
+OV-seg [24] (T)
+SEEM [26] (RGB)
+SEEM [26] (T)
+Grounded-SAM [25] (RGB)
+Grounded-SAM [25] (T)
+Ours (RGB-T)
+
+Trained
+MFNet
+PST900
+mAcc
+mIoU
+mAcc
+mIoU
+45.10
+39.70
+57.02
+63.10
+53.20
+65.69
+60.46
+74.10
+57.30
+89.61
+84.12
+72.70
+54.80
+94.02
+78.51
+68.30
+57.20
+86.90
+82.10
+75.40
+54.90
+91.63
+84.40
+58.00
+89.67
+84.47
+75.10
+58.90
+91.10
+85.40
+73.20
+58.60
+94.27
+84.74
+41.45
+37.54
+27.79
+27.90
+37.13
+36.49
+73.08
+
+21.92
+16.38
+22.06
+20.26
+29.70
+24.94
+61.64
+
+73.82
+28.72
+49.87
+23.72
+33.26
+32.90
+93.75
+
+TABLE II
+Q UANTITATIVE COMPARISONS ON M I O U (%) OF OPEN - VOCABULARY
+METHODS ON FOUR CATEGORIES OF OUR MSVID DATASET.
+
+Method
+OV-seg [24] (RGB)
+OV-seg [24] (T)
+SEEM [26] (RGB)
+SEEM [26] (T)
+Grounded-SAM [25] (RGB)
+Grounded-SAM [25] (T)
+Ours (RGB-T)
+
+vehicle
+17.85
+3.99
+72.38
+38.89
+30.92
+11.36
+78.50
+
+person
+1.76
+2.89
+21.73
+58.17
+45.01
+46.05
+69.30
+
+bicycle
+2.00
+0.04
+35.61
+0.89
+20.57
+1.80
+46.71
+
+cone
+0.02
+0.00
+0.01
+0.00
+0.00
+0.00
+35.81
+
+TABLE III
+Z ERO - SHOT QUANTITATIVE COMPARISONS (%) ACROSS ADVERSE
+WEATHERS AND LIGHT- VARYING CONDITIONS ON M3FD DATASET.
+Method
+Day
+Night Rainy Hazy Exposure Mean
+Closed-set RGB-T Semantic Segmentation Methods
+MFNet [12]
+35.68 34.84 31.96 34.43 30.18
+33.42
+RTFNet [14]
+39.50 48.12 59.08 40.70 34.40
+44.36
+46.92 56.69 57.69 41.82 32.98
+47.22
+GMNet [16]
+EGFNet [17]
+57.07 59.14 59.86 39.92 40.66
+51.33
+LASNet [7]
+53.55 55.26 57.29 31.53 40.05
+47.54
+43.04 57.81 54.36 37.46 42.29
+46.99
+semanticRT [5]
+EAEFNet [19]
+49.44 61.62 59.46 85.46 40.78
+59.35
+CAINet [6]
+56.26 68.64 69.85 51.76 56.40
+60.58
+Open-vocabulary Semantic Segmentation Methods
+OV-seg [24] (RGB)
+44.32 36.93 42.55 13.74 22.76
+32.06
+OV-seg [24] (T)
+32.28 41.55 34.09 21.14 15.69
+28.95
+44.04 53.31 71.39 51.45 34.45
+50.93
+SEEM [26] (RGB)
+SEEM [26] (T)
+40.65 57.80 66.09 59.05 30.73
+50.86
+Grounded-SAM
+35.27
+35.28
+38.58
+51.82
+33.60
+38.91
+[25] (RGB)
+Grounded-SAM
+38.19 37.59 40.76 79.79 26.17
+44.50
+[25] (T)
+Ours (RGB-T)
+58.17 61.92 77.10 88.10 60.96
+69.25
+
+respectively. Furthermore, to assess the zero-shot generalization capability, closed-set methods trained on the MFNet
+dataset are evaluated on other datasets, revealing a general
+decline in performance. In contrast, our integrated openvocabulary detection model demonstrates superior generalization. Notably, compared to other open-vocabulary methods, our method demonstrates leading performance in various
+scenes, attributable in part to the integration of thermal
+modality.
+
+32.13
+7.24
+44.67
+22.74
+27.10
+23.99
+89.76
+
+M3FD
+mAcc
+mIoU
+56.26
+33.42
+66.25
+44.36
+65.93
+47.22
+68.76
+51.33
+64.47
+47.54
+61.59
+46.99
+68.75
+59.35
+70.64
+60.58
+Zero-shot Testing
+46.46
+32.06
+51.45
+28.95
+54.62
+52.35
+62.32
+53.42
+44.27
+38.91
+50.65
+44.50
+72.60
+69.25
+
+Zero-shot Testing
+Roadscene
+mAcc
+mIoU
+35.86
+30.48
+69.57
+58.62
+71.46
+53.36
+82.97
+65.86
+77.57
+56.7
+65.44
+60.63
+74.71
+64.84
+56.73
+54.46
+69.95
+64.72
+71.49
+65.77
+63.14
+63.08
+79.36
+
+34.32
+30.14
+68.82
+61.43
+56.23
+56.78
+75.19
+
+MSVID
+mAcc
+mIoU
+39.67
+27.10
+47.20
+33.19
+53.64
+40.66
+67.84
+45.41
+69.78
+44.02
+52.57
+44.20
+54.06
+41.82
+60.32
+53.39
+
+Mean
+mAcc mIoU
+37.54
+62.36 49.97
+70.95 56.63
+75.36 59.18
+75.77 57.51
+58.86
+72.74 62.06
+71.03 62.35
+
+60.23
+38.54
+56.03
+44.64
+48.55
+41.48
+71.56
+
+58.38
+44.19
+51.67
+44.36
+45.27
+44.92
+78.07
+
+18.23
+10.11
+37.60
+39.18
+38.68
+30.37
+65.25
+
+27.73
+18.56
+44.82
+38.89
+38.12
+36.12
+72.22
+
+Qualitative Comparisons. Fig. 5 displays several qualitative semantic segmentation results across diverse datasets.
+Our method demonstrates several notable advantages. Firstly,
+it can effectively delineate individual instances, even within
+cluttered scenes. As shown in the first row, where multiple
+color cones are present, competing methods often aggregate
+these into the entire area, but our approach distinctly separates each cone, owing to the precision of our detections.
+Secondly, our method excels in distinguishing objects from
+their background, as exemplified by the accurate delineation
+of the fire-extinguisher in the last row. Lastly, compared
+with Grounded-SAM, it is evident that there are numerous
+incorrect and missed detections, which states the efficacy of
+the incorporated modules in our model.
+3) Comparison of Specific Categories: Table II lists the
+quantitative comparisons of open-vocabulary methods in four
+specific categories of our MSVID dataset, where our method
+significantly outperforms others. In contrast, the other three
+methods perform better segmentation utilizing RGB modality
+than the thermal modality on vehicle and bicycle, while the
+opposite effect for person. Meanwhile, these methods fail to
+segment traffic cones. On the contrary, our method achieves
+the highest value due to the accurate detection of objects.
+B. Robustness to Adverse Open Environments
+To evaluate the robustness of each method, we conduct
+zero-shot tests across daytime and four challenging scenarios: night, rainy, hazy, and exposure, using the M3FD
+dataset. The target categories included vehicle, pedestrian,
+and bicycle. Quantitative comparisons based on the mIoU
+metric are presented in Table III. Our method outperforms other methods in most cases, except for the night
+scene, where its performance is suboptimal compared to
+CAINet. This discrepancy arises because certain vehicles
+are obscured by elements such as pillars and trees. While
+our method effectively distinguishes objects from unrelated
+backgrounds, other methods may incorrectly classify these
+obscured areas as objects. The ground truth annotations,
+which depict complete vehicles, contribute to a decline in
+
+Fig. 5.
+
+The sample qualitative results on multiple datasets. Please zoom in for best view.
+
+our method’s accuracy. Furthermore, under night and hazy
+conditions, open-vocabulary methods utilizing the thermal
+modality exhibit better performance than those using the
+RGB modality, highlighting the importance of employing
+multiple modalities in open environments.
+
+TABLE IV
+A BLATION STUDY OF RGB-T OPEN - VOCABULARY OBJECT DETECTION
+STRATEGIES .
+Method
+Grounding DINO
+Grounding DINO + Visual Prompts
+Grounding DINO + SCCM
+Ours
+
+Fig. 6.
+
+The sample qualitative results on wild dataset.
+
+C. Performance Analysis in the Wild
+We further explore the performance of open-vocabulary
+methods in wild scenarios, with the qualitative results depicted in Fig. 6 based on the wild dataset [43]. It can be
+seen that our Open-RGBT can precisely segment the image.
+In contrast, Ov-seg struggles to effectively delineate these
+categories, resulting in incorrectly connected regions. SEEM
+fails to adequately separate objects from the background.
+Though Grounded-SAM demonstrates strong performance,
+it falls short in detecting small objects in the distance.
+Overall, our method exhibits robust performance among
+these approaches.
+D. Ablation Study
+In this ablation study, we investigate the impact of the proposed method’s components on MFNet and PST900 datasets,
+as summarized in Table IV. The baseline model utilizes
+RGB-T image pairs as input, employs Grounding DINO as
+
+MFNet
+mAcc mIoU
+55.80 38.30
+69.33 57.18
+60.51 45.26
+73.08 61.64
+
+PST900
+mAcc mIoU
+78.10 58.00
+90.62 84.57
+82.20 69.14
+93.75 89.76
+
+the open-vocabulary object detector, and incorporates TAP
+as the segmentation model.
+1) Effect of Visual Prompts: It is evident from the results
+that the inclusion of visual prompts leads to a significant
+improvement in the mAcc and mIoU metrics. Particularly
+for challenging classes, Grounding DINO may struggle to
+recognize objects and could potentially miss them. With the
+assistance of visual prompts, these challenging categories can
+be more reliably detected.
+2) Effect of SCCM: Similarly, the introduction of the
+Semantic Consistency Correction Module results in improvements in both the two metrics. This is because, in the
+presence of challenging classes, Grounding DINO might
+misinterpret the semantic meaning of the objects. With our
+module, the detection proposals can be refined, thereby
+enhancing the overall accuracy and robustness of the model.
+V. CONCLUSIONS
+In this paper, we present Open-RGBT, a multimodal openvocabulary semantic segmentation model designed to address
+the limitations of traditional RGB-T segmentation models.
+By integrating open-vocabulary learning, our approach effectively generates detection proposals and utilizes visual
+prompts to enhance category understanding. The subsequent
+use of the CLIP model corrects semantic consistency, reducing ambiguity and improving the detection accuracy.
+Additionally, the inclusion of a unified foundation model for
+segmenting and captioning regions further enhances scene
+
+comprehension. Empirical evaluations confirm that OpenRGBT, operating as a zero-shot method, even exhibits superior performance compared to previous fully supervised
+methods, showcasing advantages in generalizing to challenging scenes. Future research will refine the model’s capabilities and explore its applications in panoptic segmentation.
+R EFERENCES
+[1] Y. Yue and D. Wang, Collaborative Perception, Localization and
+Mapping for Autonomous Systems. Springer Nature, 2020, vol. 2.
+[2] S. Ainetter and F. Fraundorfer, “End-to-end trainable deep neural network for robotic grasp detection and semantic segmentation from rgb,”
+in 2021 IEEE International Conference on Robotics and Automation
+(ICRA). IEEE, 2021, pp. 13 452–13 458.
+[3] J. Jin, W. Zhou, R. Yang, L. Ye, and L. Yu, “Edge detection guide
+network for semantic segmentation of remote-sensing images,” IEEE
+Geoscience and Remote Sensing Letters, vol. 20, pp. 1–5, 2023.
+[4] J. Wu, X. Li, S. Xu, H. Yuan, H. Ding, Y. Yang, X. Li, J. Zhang,
+Y. Tong, X. Jiang et al., “Towards open vocabulary learning: A survey,”
+IEEE Transactions on Pattern Analysis and Machine Intelligence,
+2024.
+[5] W. Ji, J. Li, C. Bian, Z. Zhang, and L. Cheng, “Semanticrt: A
+large-scale dataset and method for robust semantic segmentation in
+multispectral images,” in Proceedings of the 31st ACM International
+Conference on Multimedia, 2023, pp. 3307–3316.
+[6] Y. Lv, Z. Liu, and G. Li, “Context-aware interaction network for rgb-t
+semantic segmentation,” IEEE Transactions on Multimedia, 2024.
+[7] G. Li, Y. Wang, Z. Liu, X. Zhang, and D. Zeng, “Rgb-t semantic
+segmentation with location, activation, and sharpening,” IEEE Transactions on Circuits and Systems for Video Technology, vol. 33, no. 3,
+pp. 1223–1235, 2022.
+[8] X. Jia, C. Zhu, M. Li, W. Tang, and W. Zhou, “Llvip: A visible-infrared
+paired dataset for low-light vision,” in Proceedings of the IEEE/CVF
+international conference on computer vision, 2021, pp. 3496–3504.
+[9] J. Liu, X. Fan, Z. Huang, G. Wu, R. Liu, W. Zhong, and Z. Luo,
+“Target-aware dual adversarial learning and a multi-scenario multimodality benchmark to fuse infrared and visible for object detection,”
+in Proceedings of the IEEE/CVF conference on computer vision and
+pattern recognition, 2022, pp. 5802–5811.
+[10] A. Kirillov, E. Mintun, N. Ravi, H. Mao, C. Rolland, L. Gustafson,
+T. Xiao, S. Whitehead, A. C. Berg, W.-Y. Lo et al., “Segment
+anything,” in Proceedings of the IEEE/CVF International Conference
+on Computer Vision, 2023, pp. 4015–4026.
+[11] W. Ji, J. Li, Q. Bi, T. Liu, W. Li, and L. Cheng, “Segment anything
+is not always perfect: An investigation of sam on different real-world
+applications,” 2024.
+[12] Q. Ha, K. Watanabe, T. Karasawa, Y. Ushiku, and T. Harada, “Mfnet:
+Towards real-time semantic segmentation for autonomous vehicles
+with multi-spectral scenes,” in 2017 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2017, pp.
+5108–5115.
+[13] H. Xu, J. Ma, Z. Le, J. Jiang, and X. Guo, “Fusiondn: A unified
+densely connected network for image fusion,” in Proceedings of the
+AAAI conference on artificial intelligence, vol. 34, no. 07, 2020, pp.
+12 484–12 491.
+[14] Y. Sun, W. Zuo, and M. Liu, “Rtfnet: Rgb-thermal fusion network
+for semantic segmentation of urban scenes,” IEEE Robotics and
+Automation Letters, vol. 4, no. 3, pp. 2576–2583, 2019.
+[15] S. S. Shivakumar, N. Rodrigues, A. Zhou, I. D. Miller, V. Kumar, and
+C. J. Taylor, “Pst900: Rgb-thermal calibration, dataset and segmentation network,” in 2020 IEEE international conference on robotics and
+automation (ICRA). IEEE, 2020, pp. 9441–9447.
+[16] W. Zhou, J. Liu, J. Lei, L. Yu, and J.-N. Hwang, “Gmnet: Gradedfeature multilabel-learning network for rgb-thermal urban scene
+semantic segmentation,” IEEE Transactions on Image Processing,
+vol. 30, pp. 7790–7802, 2021.
+[17] W. Zhou, S. Dong, C. Xu, and Y. Qian, “Edge-aware guidance fusion
+network for rgb–thermal scene parsing,” in Proceedings of the AAAI
+conference on artificial intelligence, vol. 36, no. 3, 2022, pp. 3571–
+3579.
+[18] W. Wu, T. Chu, and Q. Liu, “Complementarity-aware cross-modal
+feature fusion network for rgb-t semantic segmentation,” Pattern
+Recognition, vol. 131, p. 108881, 2022.
+
+[19] M. Liang, J. Hu, C. Bao, H. Feng, F. Deng, and T. L. Lam, “Explicit
+attention-enhanced fusion for rgb-thermal perception tasks,” IEEE
+Robotics and Automation Letters, 2023.
+[20] V. Badrinarayanan, A. Kendall, and R. Cipolla, “Segnet: A deep
+convolutional encoder-decoder architecture for image segmentation,”
+IEEE transactions on pattern analysis and machine intelligence,
+vol. 39, no. 12, pp. 2481–2495, 2017.
+[21] L.-C. Chen, G. Papandreou, I. Kokkinos, K. Murphy, and A. L. Yuille,
+“Deeplab: Semantic image segmentation with deep convolutional nets,
+atrous convolution, and fully connected crfs,” IEEE transactions on
+pattern analysis and machine intelligence, vol. 40, no. 4, pp. 834–
+848, 2017.
+[22] A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal,
+G. Sastry, A. Askell, P. Mishkin, J. Clark et al., “Learning transferable
+visual models from natural language supervision,” in International
+conference on machine learning. PMLR, 2021, pp. 8748–8763.
+[23] S. Liu, Z. Zeng, T. Ren, F. Li, H. Zhang, J. Yang, C. Li,
+J. Yang, H. Su, J. Zhu et al., “Grounding dino: Marrying dino with
+grounded pre-training for open-set object detection,” arXiv preprint
+arXiv:2303.05499, 2023.
+[24] F. Liang, B. Wu, X. Dai, K. Li, Y. Zhao, H. Zhang, P. Zhang, P. Vajda,
+and D. Marculescu, “Open-vocabulary semantic segmentation with
+mask-adapted clip,” in Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, 2023, pp. 7061–7070.
+[25] T. Ren, S. Liu, A. Zeng, J. Lin, K. Li, H. Cao, J. Chen, X. Huang,
+Y. Chen, F. Yan et al., “Grounded sam: Assembling open-world models
+for diverse visual tasks,” arXiv preprint arXiv:2401.14159, 2024.
+[26] X. Zou, J. Yang, H. Zhang, F. Li, L. Li, J. Wang, L. Wang, J. Gao,
+and Y. J. Lee, “Segment everything everywhere all at once,” Advances
+in Neural Information Processing Systems, vol. 36, 2024.
+[27] B. Li, K. Q. Weinberger, S. Belongie, V. Koltun, and R. Ranftl,
+“Language-driven
+semantic
+segmentation,”
+arXiv
+preprint
+arXiv:2201.03546, 2022.
+[28] C. Jia, Y. Yang, Y. Xia, Y.-T. Chen, Z. Parekh, H. Pham, Q. Le, Y.-H.
+Sung, Z. Li, and T. Duerig, “Scaling up visual and vision-language
+representation learning with noisy text supervision,” in International
+conference on machine learning. PMLR, 2021, pp. 4904–4916.
+[29] L. Tang, H. Zhang, H. Xu, and J. Ma, “Rethinking the necessity of
+image fusion in high-level vision tasks: A practical infrared and visible
+image fusion network based on progressive semantic injection and
+scene fidelity,” Information Fusion, vol. 99, p. 101870, 2023.
+[30] Q. Jiang, F. Li, Z. Zeng, T. Ren, S. Liu, and L. Zhang, “T-rex2:
+Towards generic object detection via text-visual prompt synergy,”
+arXiv preprint arXiv:2403.14610, 2024.
+[31] M. Bucher, T.-H. Vu, M. Cord, and P. Pérez, “Zero-shot semantic
+segmentation,” Advances in Neural Information Processing Systems,
+vol. 32, 2019.
+[32] J. Ding, N. Xue, G.-S. Xia, and D. Dai, “Decoupling zero-shot
+semantic segmentation,” in Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, 2022, pp. 11 583–11 592.
+[33] M. Xu, Z. Zhang, F. Wei, Y. Lin, Y. Cao, H. Hu, X. Bai et al., “A
+simple baseline for zero-shot semantic segmentation with pre-trained
+vision-language model,” arXiv preprint arXiv:2112.14757, vol. 3, p. 2,
+2021.
+[34] G. Ghiasi, X. Gu, Y. Cui, and T.-Y. Lin, “Scaling open-vocabulary
+image segmentation with image-level labels,” in European Conference
+on Computer Vision. Springer, 2022, pp. 540–557.
+[35] C. Li, X. Liang, Y. Lu, N. Zhao, and J. Tang, “Rgb-t object tracking:
+Benchmark and baseline,” Pattern Recognition, vol. 96, p. 106977,
+2019.
+[36] C. Li, W. Xue, Y. Jia, Z. Qu, B. Luo, J. Tang, and D. Sun,
+“Lasher: A large-scale high-diversity benchmark for rgbt tracking,”
+IEEE Transactions on Image Processing, vol. 31, pp. 392–404, 2021.
+[37] Y. Xiao, M. Yang, C. Li, L. Liu, and J. Tang, “Attribute-based
+progressive fusion network for rgbt tracking,” in Proceedings of the
+AAAI Conference on Artificial Intelligence, vol. 36, no. 3, 2022, pp.
+2831–2838.
+[38] J. Zhu, S. Lai, X. Chen, D. Wang, and H. Lu, “Visual prompt multimodal tracking,” in Proceedings of the IEEE/CVF conference on
+computer vision and pattern recognition, 2023, pp. 9516–9526.
+[39] Z. Tang, T. Xu, X. Wu, X.-F. Zhu, and J. Kittler, “Generative-based
+fusion mechanism for multi-modal tracking,” in Proceedings of the
+AAAI Conference on Artificial Intelligence, vol. 38, no. 6, 2024, pp.
+5189–5197.
+
+[40] B. Cao, J. Guo, P. Zhu, and Q. Hu, “Bi-directional adapter for
+multimodal tracking,” in Proceedings of the AAAI Conference on
+Artificial Intelligence, vol. 38, no. 2, 2024, pp. 927–935.
+[41] Z. Wu, J. Zheng, X. Ren, F.-A. Vasluianu, C. Ma, D. P. Paudel,
+L. Van Gool, and R. Timofte, “Single-model and any-modality for
+video object tracking,” in Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, 2024, pp. 19 156–19 166.
+[42] X. Hou, J. Xing, Y. Qian, Y. Guo, S. Xin, J. Chen, K. Tang, M. Wang,
+Z. Jiang, L. Liu et al., “Sdstrack: Self-distillation symmetric adapter
+learning for multi-modal visual object tracking,” in Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+2024, pp. 26 551–26 561.
+[43] C. Lee, M. Anderson, N. Raganathan, X. Zuo, K. Do, G. Gkioxari,
+and S.-J. Chung, “Cart: Caltech aerial rgb-thermal dataset in the wild,”
+arXiv preprint arXiv:2403.08997, 2024.
+[44] T. Pan, L. Tang, X. Wang, and S. Shan, “Tokenize anything via
+prompting,” arXiv preprint arXiv:2312.09128, 2023.
+[45] X. He, M. Wang, T. Liu, L. Zhao, and Y. Yue, “Sfaf-ma: Spatial feature
+aggregation and fusion with modality adaptation for rgb-thermal
+semantic segmentation,” IEEE Transactions on Instrumentation and
+Measurement, vol. 72, pp. 1–10, 2023.
+[46] M. Yu, T. Cui, H. Lu, and Y. Yue, “Vifnet: An end-to-end visibleinfrared fusion network for image dehazing,” Neurocomputing, p.
+128105, 2024.
+[47] Y. Yue, C. Yang, J. Zhang, M. Wen, Z. Wu, H. Zhang, and D. Wang,
+“Day and night collaborative dynamic mapping in unstructured environment based on multimodal sensors,” in 2020 IEEE international
+conference on robotics and automation (ICRA). IEEE, 2020, pp.
+2981–2987.
+
+

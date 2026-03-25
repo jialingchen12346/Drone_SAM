@@ -1,0 +1,42 @@
+objective: "Redesign the model and retrain under a unified FMB evaluation protocol"
+status: active
+last_updated: "2026-03-23"
+milestones:
+  - id: M1
+    title: "Unify FMB evaluation protocol"
+    status: in_progress
+  - id: M2
+    title: "Finalize redesigned architecture"
+    status: in_progress
+  - id: M3
+    title: "Run controlled retraining experiments"
+    status: pending
+tasks:
+  - id: T1
+    title: "Re-evaluate current best CACAF checkpoint with both absent-class policies"
+    status: in_progress
+    owner: codex
+    depends_on: []
+  - id: T2
+    title: "Re-evaluate MM SAM-Adapter baseline under the same reporting template"
+    status: pending
+    owner: codex
+    depends_on: [T1]
+  - id: T3
+    title: "Design the vNext fusion and decoder modules"
+    status: in_progress
+    owner: codex
+    depends_on: []
+  - id: T4
+    title: "Implement the first redesign prototype without changing encoders"
+    status: pending
+    owner: codex
+    depends_on: [T1, T2, T3]
+  - id: T5
+    title: "Train one controlled prototype with the unified evaluator"
+    status: pending
+    owner: codex
+    depends_on: [T4]
+notes:
+  - "Do not use 68.62 > 66.10 as a strict headline claim until the metric definition is unified."
+  - "Keep SAM2 Hiera + ConvNeXt-Tiny encoders fixed for the first redesign round; focus innovation on fusion and decoder."

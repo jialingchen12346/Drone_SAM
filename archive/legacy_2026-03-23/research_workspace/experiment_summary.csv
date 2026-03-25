@@ -1,0 +1,6 @@
+source_type,run_name,mIoU,mAcc,aAcc,epoch,config,checkpoint,path
+log,v5_ablation_no_ohem,68.62,75.75,93.27,59,,/home/jl/Drone-SAM-Adapter/work_dirs/v5_ablation_no_ohem/epoch_60.pth,work_dirs/v5_ablation_no_ohem/eval_test_epoch60.log
+log,v5_ablation_full,66.79,72.89,93.46,59,,/home/jl/Drone-SAM-Adapter/work_dirs/v5_ablation_full/epoch_60.pth,work_dirs/v5_ablation_full/eval_test_epoch60.log
+json,Segformer_MMSAM_adapter_large_FMB_800x800_ss_RGBTHERM,66.1,72.09,93.95,,configs/FMB/Segformer_MMSAM_adapter_large_FMB_800x800_ss_RGBTHERM.py,,segmentation/work_dirs/Segformer_MMSAM_adapter_large_FMB_800x800_ss_RGBTHERM/eval_single_scale_20260304_164206_FMB_RGBThermal_checkpoint.json
+log,v5_ablation_no_cacaf,64.71,70.53,93.45,59,,/home/jl/Drone-SAM-Adapter/work_dirs/v5_ablation_no_cacaf/epoch_60.pth,work_dirs/v5_ablation_no_cacaf/eval_test_epoch60.log
+log,v5_ablation_no_sagu,64.67,70.57,93.27,59,,/home/jl/Drone-SAM-Adapter/work_dirs/v5_ablation_no_sagu/epoch_60.pth,work_dirs/v5_ablation_no_sagu/eval_test_epoch60.log

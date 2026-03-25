@@ -1,0 +1,106 @@
+\section{Experiments}
+
+\subsection{Dataset and Setup}
+
+FMB is a real-world RGB-T semantic segmentation benchmark with 14 semantic classes and a train/val/test split of $1060/160/280$~\cite{liu2023fmb}. The original test resolution is $800\times600$. Compared with aerial RGB segmentation datasets such as UAVid and Agriculture-Vision, FMB additionally emphasizes all-day RGB-T paired observations, making it more suitable for evaluating modality-quality variation in multimodal aerial perception~\cite{lyu2020uavid,chiu2020agriculturevision,liu2023fmb}. During training, we use random scaling and random cropping to generate $512\times512$ inputs. For the main test protocol, inference is performed at the original image resolution, padding inputs only to multiples of 32 instead of forcing global resizing to $512\times512$.
+
+We use AdamW for optimization. The learning rates for the SAM2 adapters and ConvNeXt-Tiny are both set to $1\times10^{-4}$, while CACAF and HGSOAD use $2\times10^{-4}$. The weight decay is $0.01$. We adopt a schedule with 500 warmup iterations followed by cosine decay. The model is trained for 60 epochs with BF16 mixed precision and batch size 4. Data augmentation includes random scaling, random cropping, random horizontal flipping, Gaussian blur ($p=0.2$), photometric distortion, and a category-aware crop constraint with $cat\_max\_ratio=0.75$.
+
+\subsection{Comparison with Prior Methods}
+
+\begin{table}[t]
+    \centering
+    \caption{Comparison with representative methods on the FMB test set. Results are taken from official papers or official repositories released by the cited methods.}
+    \label{tab:main}
+    \small
+    \begin{tabular}{p{0.52\columnwidth}c}
+        \toprule
+        Method & mIoU \\
+        \midrule
+        MMSFormer~\cite{reza2024mmsformer} & 61.68 \\
+        StitchFusion~\cite{li2024stitchfusion} & 64.85 \\
+        MM SAM-Adapter~\cite{curti2025mmsamadapter} & 66.10 \\
+        \textbf{Ours (\method)} & \textbf{68.62} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Table~\ref{tab:main} compares the proposed method with representative published or officially released FMB baselines. Our method surpasses MMSFormer~\cite{reza2024mmsformer}, StitchFusion~\cite{li2024stitchfusion}, and the direct baseline MM SAM-Adapter~\cite{curti2025mmsamadapter}, achieving the best mIoU among the currently verified entries. Relative to MM SAM-Adapter, the improvement is \textbf{+2.52 mIoU}; in our local evaluation, the corresponding mAcc gain is \textbf{+3.66}, while aAcc decreases slightly from 93.95 to 93.27.
+
+\subsection{Module and Loss Ablations}
+
+\begin{table}[t]
+    \centering
+    \caption{Module ablation on the FMB test set.}
+    \label{tab:ablation}
+    \begin{tabular}{lcc}
+        \toprule
+        Method & mIoU & $\Delta$ \\
+        \midrule
+        \textbf{Full (CACAF + SAGU)} & \textbf{68.62} & --- \\
+        w/o CACAF & 62.86 & -5.76 \\
+        w/o SAGU & 65.57 & -3.05 \\
+        w/o CACAF, w/o SAGU & 64.78 & -3.84 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[t]
+    \centering
+    \caption{Loss ablation on the FMB test set.}
+    \label{tab:loss}
+    \begin{tabular}{lcc}
+        \toprule
+        Loss & mIoU & $\Delta$ \\
+        \midrule
+        \textbf{CE + Dice} & \textbf{68.62} & --- \\
+        CE + OHEM & 67.79 & -0.83 \\
+        CE + Dice + OHEM & 66.79 & -1.83 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The ablation results show that CACAF is the dominant source of improvement, while SAGU provides an additional and consistent gain on top of the full architecture. This confirms that both adaptive multimodal fusion and decoder-side small-object enhancement are necessary for the drone-view RGB-T setting. The loss ablation further shows that Dice and OHEM do not complement each other in the current architecture; instead, their combination degrades performance. Consequently, the final model uses CE + Dice.
+
+\subsection{Cross-Dataset Evaluation}
+
+\begin{table}[t]
+    \centering
+    \caption{MFNet comparison under the strict 9-class protocol.}
+    \label{tab:mfnet}
+    \begin{tabular}{lc}
+        \toprule
+        Method & mIoU \\
+        \midrule
+        MFNet~\cite{ha2017mfnet} & 45.1 \\
+        RTFNet~\cite{sun2019rtfnet} & 53.2 \\
+        EGFNet~\cite{zhou2022egfnet} & 54.8 \\
+        GMNet~\cite{zhou2021gmnet} & 57.3 \\
+        CMX (MiT-B4)~\cite{zhang2023cmx} & 59.7 \\
+        CMNeXt (MiT-B4)~\cite{zhang2023deliver} & 59.9 \\
+        StitchFusion~\cite{li2024stitchfusion} & 58.13 \\
+        CRM (Swin-B)~\cite{shin2023crm} & \textbf{61.4} \\
+        Ours (\method) & 54.73 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Under the strict 9-class MFNet protocol, the proposed method achieves \textbf{54.73 mIoU}, \textbf{68.14 mAcc}, and \textbf{97.90 aAcc}. It clearly outperforms MFNet~\cite{ha2017mfnet} and RTFNet~\cite{sun2019rtfnet}, remains close to EGFNet~\cite{zhou2022egfnet}, but trails stronger transformer-based methods such as CMX~\cite{zhang2023cmx}, CMNeXt~\cite{zhang2023deliver}, StitchFusion~\cite{li2024stitchfusion}, and CRM~\cite{shin2023crm}. These results suggest that the proposed design is not limited to FMB, while also indicating that there remains room for stronger cross-dataset generalization.
+
+\begin{figure*}[!t]
+    \centering
+    \includegraphics[width=\textwidth]{\figqual}
+    \caption{Qualitative comparisons on five representative FMB test scenes (\texttt{00779}, \texttt{00048}, \texttt{00121}, \texttt{00712}, and \texttt{01478}). Compared with MM SAM-Adapter, the proposed method yields clearer boundaries and more reliable recovery of small or weakly illuminated targets under challenging RGB-T conditions.}
+    \label{fig:qualitative}
+\end{figure*}
+
+\begin{figure*}[!b]
+    \centering
+    \includegraphics[width=0.92\textwidth]{\figweight}
+    \caption{Visualization of adaptive fusion weights in CACAF. Thermal contributions are more evident at shallow and intermediate scales, especially in challenging conditions, while deeper scales are largely dominated by the RGB branch. This suggests that condition-aware multimodal adaptation mainly occurs before high-level semantic representations become strongly RGB-centered.}
+    \label{fig:weights}
+\end{figure*}
+
+\subsection{Qualitative Analysis}
+
+Fig.~\ref{fig:qualitative} presents five representative FMB test cases, each with RGB, thermal, ground-truth, MM SAM-Adapter, and our prediction. The proposed model more reliably recovers pedestrians, traffic lights, and distant vehicles in low-light or low-contrast scenes, while also producing cleaner road boundaries and object contours. Fig.~\ref{fig:weights} provides an interpretability view of CACAF. The learned fusion weights show that thermal cues contribute more clearly at shallow and intermediate scales, where local appearance degradation and low-contrast regions are still informative for cross-modal compensation. In contrast, deeper scales are largely dominated by the RGB branch, indicating that high-level semantic representations rely more heavily on the frozen SAM2 backbone. This observation suggests that the main benefit of CACAF lies in condition-aware adaptation at early and middle stages, rather than uniformly strong dynamic weighting at all scales.

@@ -1,0 +1,2394 @@
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+1
+
+BIMII-Net: Brain-Inspired Multi-Iterative Interactive Network for
+RGB-T Road Scene Semantic Segmentation
+
+arXiv:2503.19303v1 [cs.CV] 25 Mar 2025
+
+Hanshuo Qiu, Jie Jiang, Ruoli Yang∗ , Lixin Zhan, and Jizhao Liu
+
+Abstract—RGB-T road scene semantic segmentation enhances
+visual scene understanding in complex environments characterized by inadequate illumination or occlusion by fusing information from RGB and thermal images. Nevertheless, existing
+RGB-T semantic segmentation models typically depend on simple
+addition or concatenation strategies or ignore the differences
+between information at different levels. To address these issues,
+we proposed a novel RGB-T road scene semantic segmentation
+network called Brain-Inspired Multi-Iteration Interaction Network (BIMII-Net). First, to meet the requirements of accurate
+texture and local information extraction in road scenarios like autonomous driving, we proposed a deep continuous-coupled neural
+network (DCCNN) architecture based on a brain-inspired model.
+This architecture efficiently integrates multi-scale information
+via iterative optimization of multiple continuous-coupled neural
+network (CCNN) layers and employs a phased training technique
+to reduce computational resource consumption while maintaining
+performance. Second, to enhance the interaction and expression
+capabilities among multi-modal information, we designed a cross
+explicit attention-enhanced fusion module (CEAEF-Module) in
+the feature fusion stage of BIMII-Net to effectively integrate
+features at different levels. Finally, we constructed a complementary interactive multi-layer decoder structure, incorporating the
+shallow-level feature iteration module (SFI-Module), the deeplevel feature iteration module (DFI-Module), and the multifeature enhancement module (MFE-Module) to collaboratively
+extract texture details and global skeleton information, with
+multi-module joint supervision further optimizing the segmentation results. Experimental results demonstrate that BIMIINet achieves state-of-the-art (SOTA) performance in the braininspired computing domain and outperforms most existing RGBT semantic segmentation methods. It also exhibits strong generalization capabilities on multiple RGB-T datasets, proving the
+effectiveness of brain-inspired computer models in multi-modal
+image segmentation tasks.
+Index Terms—semantic segmentation, multi-modal data, braininspired computing, continuous-coupled neural networks
+
+I. I NTRODUCTION
+Semantic segmentation is a fundamental task in computer
+vision that aims to classify each pixel in an image, thereby
+facilitating a profound comprehension of the image or scene at
+the pixel level. This task has broad implications across various
+domains, including autonomous driving, medical imaging,
+robotics, and remote sensing [1]–[6]. Traditional semantic
+segmentation techniques predominantly rely on convolutional
+Hanshuo Qiu and Jizhao Liu are with the School of Information Science and
+Engineering, Lanzhou University, No.222, TianShui Road(south), Lanzhou,
+730000, Gansu, China (e-mail: qiuhsh21@lzu.edu.cn; liujz@lzu.edu.cn).
+Jie Jiang, Ruoli Yang and Lixin Zhan are with the College of Systems Engineering, National University of Defense Technology, Changsha
+410073, China (e-mail: jiejiang@nudt.edu.cn; yrl 14@nudt.edu.cn; zhanlixin98@outlook.com).
+Hanshuo Qiu and Jie Jiang are co-first authors.
+∗ Ruoli Yang is the corresponding author.
+
+neural networks (CNNs) [7], [8]. In complex scenes, RGB
+images frequently fail to deliver sufficient information due to
+issues such as variations in lighting, weather conditions, and
+occlusion, leading to a decline in segmentation efficacy [9],
+[10]. In contrast to RGB images, thermal images effectively
+capture the thermal radiation emitted by objects, thereby
+preserving robust perceptual abilities in challenging environments [11], [12]. Consequently, the incorporation of thermal
+imagery effectively addresses this limitation, rendering RGBT semantic segmentation an increasingly prominent research
+avenue.
+In recent years, RGB-T semantic segmentation methods
+have mainly focused on the fusion of multi-modal information,
+which can be roughly divided into three fusion paradigms: encoder fusion [13]–[16], decoder fusion [17]–[19], and feature
+fusion [20], [21]. Specifically, encoder fusion integrates multimodal information in the feature extraction stage and pays
+more attention to obtaining richer details in the early stage
+of semantic segmentation. Decoder fusion emphasizes the
+integration of semantic information from different modalities
+throughout the upsampling and feature recovery stages. Feature fusion strategies jointly process multi-modal information
+in the intermediate phase. Fig. 1 illustrates these three fusion
+paradigms. Li et al. identified the shortcomings of the above
+three fusion methods [22]. Most of these fusion paradigms
+employ simple approaches like addition or concatenation or
+fail to consider the differences in information across different
+levels, hence constraining the further enhancement of model
+performance. In this study, we employ feature fusion methods
+and segment the decoder into three branches to address the
+limitations of existing fusion paradigms. Two branches consist
+of the shallow-level feature iteration module (SFI-Module)
+and the deep-level feature iteration module (DFI-Module)
+for processing shallow and deep features, respectively. The
+other branch includes the multi-feature enhancement module
+(MFE-Module) for integrating shallow-level and deep-level
+features to extract semantic segmentation results. This strategy
+fully considers the complementarity of information at different
+levels and promotes their continuous refinement.
+We also consider the key role of texture and local information in feature extraction. In road scenarios with high requirements for environmental perception, such as autonomous
+driving, details like pedestrian stance and vehicle edges significantly impact the accuracy of segmentation results. Therefore,
+we desire to implement a module incorporating a feedback
+mechanism to perpetually refine and rectify feature expression through multiple iterations. Moreover, in complex visual
+tasks like semantic segmentation, the human brain excels in
+visual perception and adeptly processes complicated spatial
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+2
+
+Fig. 1. Three fusion paradigms for RGB-T semantic segmentation: (a) encoder fusion, (b) decoder fusion, (c) feature fusion.
+
+and temporal relationships. In recent years, several academics
+have proposed various methodologies to integrate the benefits of human cognitive processes in visual perception and
+spatial relationship analysis into deep learning models. We
+introduce a novel brain-inspired model: continuous-coupled
+neural network (CCNN) [23]. Although the majority of braininspired models prioritize minimizing power consumption and
+computational complexity, CCNN maintains the biological
+plausibility of brain-inspired computing while simultaneously
+delivering exceptional performance in intricate computer vision applications. We apply the multiple iteration mechanism of CCNN in the learning process of each layer in the
+network feature extraction and upsampling process, enabling
+CCNN to efficiently integrate multi-scale information. In
+addition, we consider that multiple iterations may introduce
+significant computational complexity. In order to minimize
+computing resource consumption while maintaining model
+performance, we adopted a phased training strategy. During
+the direct training phase, we accelerate the training by setting
+a lower iteration step (T = 1); subsequently, in the fine-tuning
+phase, we appropriately increase the iteration step (T = 4)
+to further optimize the expression of fine-grained features.
+By continuously optimizing its internal dynamics, CCNN
+simulates the brain’s ability to perform multi-stage information
+processing and decision-making, thereby improving its overall
+performance.
+In this paper, we propose a novel RGB-T road scene
+semantic segmentation network: Brain-Inspired Multi-Iterative
+Interactive Network (BIMII-Net). The overall architecture
+consists of three parts: encoder, feature fusion, and decoder:
+(a) The encoder utilizes the Segformer-B3 architecture. We
+employ CCNN layers in the encoder and utilize its iterative
+mechanism to extract features from RGB and thermal images
+through two branches. (b) During the feature fusion phase,
+we consider the three cases proposed by Liang et al [24]. To
+ensure that at least one branch of feature fusion stage can
+obtain useful information, we use the improved cross explicit
+attention-enhanced fusion module (CEAEF-Module) to integrate multi-modal information. We categorize the features in
+the feature fusion phase into shallow-level features (E1 , E2 )
+and deep-level features (E3 , E4 ). The shallow-level features
+emphasize texture and contour details, whereas the deep-level
+
+features concentrate on depicting global skeletal positioning
+information. (c) We designed a SFI-Module, a DFI-Module,
+and a MFE-Module for the decoder. SFI-Module and DFIModule employ the iterative technique of CCNN, similar to
+that in the encoder, to extract texture and skeletal information. Moreover, they incorporate the final result via multiple
+learnable parameters of MFE-Module. Consequently, we adopt
+a multi-module joint supervision strategy to optimize the
+decoder output from three perspectives: semantic supervision,
+boundary supervision, and binary supervision.
+The main contributions of this paper are as follows:
+1) In order to fully exploit the complementarity between
+features at different levels and achieve accurate extraction of fine-grained features, we propose a novel RGBT road scene semantic segmentation network, BIMIINet, based on a brain-inspired computing architecture.
+To the best of our knowledge, it is the first time that a
+brain-inspired computing architecture has been used to
+implement semantic segmentation of multi-modal data.
+Our model demonstrates superior performance compared
+to the state-of-the-art (SOTA) architectures in the domain of brain-inspired computing.
+2) We proposed a deep continuous-coupled neural network
+(DCCNN) architecture with cross-layer signal transmission characteristics. The architecture consists of multiple CCNN layers, forming an overall structure that is
+iteratively optimized layer by layer and continuously
+integrates input features from different scales during the
+recursive update process. In addition, the multi-stage
+training strategy effectively reduces the resource consumption caused by multiple iterations, thereby facilitating efficient fusion of deep features while maintaining
+high performance.
+3) We proposed a CEAEF-Module, which enhances the
+interaction among various modalities and the expressiveness of output features. Furthermore, the module
+employs two complementary branches to guarantee that
+at least one of them can be completely activated.
+4) We proposed a complementary interactive multi-layer
+decoder structure. The decoder structure consists of
+three main modules: SFI-Module is used to extract
+texture details; DFI-Module focuses on global skeleton
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+information; MFE-Module realizes the complementary
+interaction of multi-level features.
+The rest of this paper is organized as follows: In Sec. II,
+we present the related work. Sec. III discusses the overall
+architecture of BIMII-Net and introduces the details of each
+key module. Sec. IV covers the experimental results and
+analysis. Finally, Sec. V concludes this paper.
+II. R ELATED WORK
+A. RGB Semantic Segmentation
+The rapid advancement of semantic segmentation has led
+to the proposal of numerous traditional network architectures.
+The initial Fully Convolutional Network (FCN) established
+the groundwork for deep learning in semantic segmentation
+by using transposed convolution and skip connections [25].
+Subsequently, U-Net excelled in domains like medical image
+segmentation because of its symmetrical encoding-decoding
+structure and effective feature fusion mechanism [26]. Moreover, the DeepLab series of networks improved the modeling
+of contextual information using dilated convolution and Atrous
+Spatial Pyramid Pooling (ASPP), while the implementation
+of conditional random fields further refined the segmentation
+boundaries [27]. SegNet is designed to be lightweight and
+efficient, using pooling indexes to preserve spatial detail,
+rendering it an optimal selection for resource-constrained
+environments [28].
+Transformer-based models have demonstrated significant
+potential in semantic segmentation tasks in recent years [29].
+The Vision Transformer (ViT) was the first to incorporate
+the self-attention mechanism into the segmentation work for
+the purpose of modeling global context information [30].
+The Swin Transformer dramatically decreased computational
+costs by hierarchical windowed self-attention [31]. Moreover,
+Segmenter enhances the precision of segmentation boundaries by the integration of transformer and decoder modules
+[32]. SegFormer enhanced segmentation performance by a
+lightweight design and efficient decoders [33].
+RGB-based semantic segmentation algorithms encounter
+difficulties in complex situations, including susceptibility to
+lighting fluctuations and challenges in differentiating items
+with analogous colors. To address these issues, RGB-T semantic segmentation utilizes the complementary information
+gathered from thermal images, which are resilient to varying
+lighting conditions and capture distinctive thermal radiation
+characteristics. This integration significantly enhances segmentation performance in challenging environments and expands
+the applicability of semantic segmentation.
+B. RGB-T Semantic Segmentation
+In the field of RGB-T semantic segmentation, a variety of
+models have emerged in recent years. Ha et al. first proposed a
+network MFNet that combines visible light and thermal images
+for semantic segmentation. The network adopts an encoderdecoder architecture and improves the semantic segmentation
+performance in complex scenes through multi-scale feature
+extraction and modal feature fusion [17]. Sun et al. used
+
+3
+
+two ResNet branches as encoders and proposed RTFNet [13].
+The encoder part of the network uses additive interaction to
+effectively combine the features of RGB and thermal images
+to improve segmentation performance. Sun et al. adopted an
+architecture similar to RTFNet and proposed the FuseSeg
+model by replacing ResNet with DenseNet [15]. Shivakumar et
+al. proposed the PST900 model, which achieved multi-modal
+semantic segmentation with higher inference speed [34].
+However, the fusion strategies employed by these networks
+are relatively simple, mostly depending on the addition or
+concatenation of features, consequently hindering a comprehensive exploration of the complementarity inherent in multimodal information. To address these problems, some models
+have begun to introduce more complex feature fusion mechanisms in recent years and jointly supervise features of different
+forms. Deng et al. proposed FEANet, which uses the featureenhanced attention module to enhance the complementarity
+of multi-level features and modalities from the perspective
+of channels and space [14]. Zhou et al. proposed MFFENet,
+which achieved multi-modal fusion at multiple stages [16].
+This model introduces the spatial attention mechanism module
+to make the network pay more attention to the foreground
+object. Zhang et al. proposed ABMDRNet, which uses a
+modality difference reduction and fusion subnetwork to reduce
+modality difference [18]. Zhou et al. proposed GMNet, which
+uses a shallow feature fusion module and a deep feature fusion
+module to fuse features at different levels and supervises the
+network using three loss functions [21]. Liu et al. proposed
+GCNet, which adopts a grid-like context-aware module to
+capture rich semantic information from different contexts [20].
+Wang et al. proposed UTFNet, which designed an uncertainty estimation and evidence fusion module to quantify the
+uncertainty of each modality and used uncertainty to guide
+information fusion [35]. Zhou et al. proposed CACFNet, which
+introduced a cross-modal attention fusion module to combine
+complementary information from two modalities and designed
+a region-based module to explore the relationship between
+regions and pixels [36]. Zhou et al. proposed MMSMCNet,
+which uses a multi-modal complementary supervision mechanism to optimize target objects of different forms at multiple
+scales [37]. Liang et al. proposed EAEFNet and designed
+explicit attention-enhanced fusion [24]. Lv et al. proposed
+CAINet [38]. The model uses a context-aware complementary
+reasoning module to establish a complementary relationship
+between multi-modal features and long-term context in spatial
+and channel dimensions.
+Among the existing RGB-T semantic segmentation architectures, few methods pay attention to the differences between
+different morphological features or adopt advanced fusion
+strategies to fully consider the situation when none of the
+fusion branches can obtain effective information. In addition,
+existing methods generally lack a top-down feedback regulation mechanism similar to the human brain’s visual mechanism, hindering the continuous optimization of boundaries
+and local details. In this study, we proposed a complementary
+interactive multi-layer decoder structure to enhance the complement of boundary and skeleton information. Moreover, we
+proposed a cross explicit attention-enhanced fusion module
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+(CEAEF-Module) to fuse the features of each layer in the
+encoder. The module constructs two complementary activation
+branches to guarantee that at least one branch can obtain useful
+information. Furthermore, we introduced a continuous-coupled
+neural network (CCNN) with high biological plausibility and
+employed its iterative feedback mechanism within the encoder
+and decoder to continuously refine and optimize multi-scale
+features. To further reduce the complexity of model debugging,
+we adopted an automatic weighted loss (AWL) strategy. We
+consider several supervision tasks as components of multi-task
+learning and use learnable parameters to dynamically modify
+the weights of each loss, therefore achieving a more reasonable
+weight distribution and enhancing the model’s performance
+[39].
+C. Brain-Inspired Computing in Semantic Segmentation
+In recent years, brain-inspired computing has emerged as
+a significant area of focus within computational neuroscience
+and artificial intelligence [40], [41]. Nonetheless, initial applications of brain-inspired computing primarily concentrated on
+straightforward tasks like image classification, which typically
+do not necessitate intricate spatial processing of input data
+[42], [43]. In recent years, the advancement of brain-inspired
+computing theory and technology has led to an expansion of
+research from image classification to more complex tasks,
+including semantic segmentation and object detection [44].
+Semantic segmentation requires that the network possesses
+both global semantic understanding and local detail capture
+capabilities. This presents new challenges for the application
+of brain-inspired computing and fostering a range of innovative
+approaches.
+Recently, researchers have proposed a variety of braininspired computing architectures to meet these challenges.
+Kim et al. first applied spiking neural network (SNN) to semantic segmentation tasks [45]. The study implemented a lowpower semantic segmentation model and used a proxy gradient
+optimization method to obtain better performance and lower
+latency. Yao et al. proposed a spike-driven Transformer and
+designed a Meta Transformer-based SNN architecture [46].
+This architecture is the first directly trained SNN architecture
+that can handle classification, detection, and segmentation
+simultaneously, and this study is the first time that the performance of the SNN field has been reported on the ADE20K
+dataset. Zhou et al. proposed QKFormer and designed a new
+SNN formal attention mechanism [47]. This is a QK attention
+mechanism in the form of a spike, which has linear complexity
+and is suitable for the spatiotemporal spike pattern of SNN. Li
+et al. proposed Spike Calibration and used the artificial neural
+network (ANN) to SNN method for training [48]. This study
+used spike calibration (SpiCalib) to eliminate the damage of
+discrete pulses to the output distribution, and only required
+extremely short inference time and extremely low energy
+consumption to obtain effective segmentation and detection
+effects.
+Currently, semantic segmentation models based on braininspired computing still face many limitations. To the best
+of our knowledge, there has been no proposed effective braininspired computing architecture for the semantic segmentation
+
+4
+
+of multi-modal data. Current brain-inspired computer architectures for semantic segmentation are often compared to SNNs
+and underperforming ANNs, indicating that they have yet
+to attain the standards of prevalent deep learning methods.
+Moreover, many brain-inspired models exhibit a deficiency in
+biological rationality, and their biological foundations are inadequately aligned with actual issues, thereby constraining the
+efficacy and advancement of brain-inspired computer models
+in practical applications.
+D. Continuous-Coupled Neural Network
+CCNN is an innovative artificial neural network model
+inspired by the primary visual cortex of mammals, such as
+cats [23]. The model is designed to more precisely simulate
+the dynamic response of actual neurons to intricate external
+inputs, encompassing both periodic and chaotic behaviors. In
+comparison to the conventional pulse-coupled neural network
+(PCNN), the CCNN more accurately reflects the electrophysiological properties of biological neurons and has superior
+efficacy in image and video processing tasks [49], [50].
+Currently, CCNN is widely used in various other domains
+like brain-inspired computing and dynamic visual processing,
+offering a new perspective for investigating how the brain
+employs chaos to process information [51]–[54].
+The structure of CCNN is shown in Fig. 3, and its mathematical iteration equation is as follows:
+
+
+Fij (n) = e−αf Fij (n − 1) + VF Mijkl Ykl (n − 1) + Sij
+
+
+
+
+L (n) = e−αl Lij (n − 1) + VL Wijkl Ykl (n − 1)
+
+
+ ij
+
+Uij (n) = Fij (n) 1 + βLij (n)
+
+1
+Yij (n) =
+
+
+
+− Uij (n)−Eij (n)
+
+
+1+e
+
+
+Eij (n) = e−αe Eij (n − 1) + VE Yij (n − 1)
+(1)
+where (i, j) represents the position of the neuron within
+the image matrix. CCNN contains five main parts: coupled
+connection Lij (n), feedback input Fij (n), modulation product
+Uij (n), dynamic threshold Eij (n), and continuous output
+Yij (n). Sij denotes the external input received by the receptive
+field. Parameters af , al , and ae represent the exponential decay
+factors of the neuron. VF and VL represent the weighting
+factors of the neuron action potential, respectively. In addition,
+Mijkl and Wijkl denote the feedback and connection synaptic
+weights, respectively, and β represents the connection strength,
+which directly influences Lij (n) in the modulation product
+Uij (n).
+In the field of brain-inspired computing, SNN is regarded as
+the third generation of neural network models, replacing traditional continuous signals with discrete pulses [55]. It has been
+recognized for lower power consumption and computational
+complexity compared to traditional ANN models, making
+it particularly suitable for embedded systems and real-time
+applications [56], [57]. Nonetheless, its discrete pulse outputs
+frequently result in issues such as non-differentiability and information loss. In contrast, CCNNs utilize continuous outputs,
+which partially address these deficiencies and demonstrate
+enhanced biological plausibility and performance in visual
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+tasks. However, due to the continuous signal outputs combined
+with convolution operations, their overall energy consumption
+is comparatively elevated, potentially posing challenges in
+large-scale application scenarios.
+The initial implementation of CCNN in deep learning
+has been reported in Ref. [53]. Zhang et al. employed the
+deep continuous-coupled neural network (DCCNN) for image
+classification and identified the phenomenon of semantic saturation in CCNN. This study employs CCNN for the semantic
+segmentation of multi-modal data. This is the first application
+of CCNN for the intricate computer vision task of multi-modal
+semantic segmentation.
+III. P ROPOSED M ETHOD
+A. Overall Architecture
+As shown in the Fig. 2, BIMII-Net consists of three parts:
+encoder, feature fusion, and decoder.
+Encoder: We adopt the encoder structure based on Segformer [58]. Following each Segformer layer, a continuouscoupled neural network (CCNN) layer is added, fused through
+a residual connection. We input RGB and thermal images into
+two branches for feature extraction, obtaining the outputs Ri
+and Ti from the i-th (i ∈ {1, 2, 3, 4}) CCNN layer in both
+branches of the encoder. The outputs are sent to the feature
+fusion part.
+Feature fusion: We utilize the cross explicit attentionenhanced fusion module (CEAEF-Module) to perform feature
+fusion on Ri and Ti and produce Ei as output. The outputs of
+the four CEAEF-Modules are categorized into two categories:
+shallow-level features (E1 , E2 ) and deep-level features (E3 ,
+E4 ). The initial input for the decoder utilizes the output from
+the last CEAEF-Module.
+Decoder: We design a complementary interactive multilayer decoder structure. The shallow-level feature iteration
+module (SFI-Module) and the deep-level feature iteration
+module (DFI-Module) in the decoder are used to attain the
+localization of the target contour and skeleton, respectively.
+Their outputs are denoted as Soutj and Doutj (j ∈ {1, 2, 3}),
+respectively. The multi-feature enhancement module (MFEModule) integrates the fused features to provide the final
+semantic segmentation result, comprising three distinct outputs, denoted as Sj , Mj , and Dj . The three outputs are used
+as the inputs for the subsequent SFI-Module, MFE-Module,
+and DFI-Module, respectively. Eventually, we implement a
+multi-module joint supervision strategy to jointly supervise the
+outputs of all modules within the decoder. Soutj and Doutj are
+supervised for boundary and binary, respectively, and Mout is
+supervised for semantic segmentation.
+B. Deep Continuous-Coupled Neural Network
+In the proposed BIMII-Net, CCNN is embedded in the
+model as a deep continuous-coupled neural network (DCCNN)
+architecture, which is shown in Fig. 3. In the proposed
+architecture, the encoder contains four CCNN layers, while
+the decoder includes three CCNN layers. Each CCNN layer
+updates iteratively using the state parameters from the previous
+layer. Furthermore, we compute the average of the signals
+
+5
+
+(such as F, L, E) from the last CCNN layer in both branches
+of the encoder in the feature fusion stage and transmit them
+to the decoder as the initial input for the next CCNN layer.
+When T = 4, the CCNN in the entire network undergoes
+28 iterations, processing 7 distinct feature inputs. This multiiteration strategy not only effectively emulates the multistage dynamic processing of information in biological visual
+systems but also facilitates more refined feature optimization.
+At present, most brain-inspired models need to initialize
+their neuron states in each layer call. The proposed scheme initializes only the first layer of the CCNN, with each subsequent
+layer utilizing the state parameters (such as F, L, E) from the
+preceding layer’s iteration for recursive updates. In the first
+layer of the CCNN within our model, all neurons remain inactive, and the weights of the convolutional layer are initialized.
+The CCNN iterative algorithm (T = 4) in the RGB branch of
+the encoder is shown in Alg. 1.
+In deep learning, F, L, U, Y, E are all Torch tensors of
+the same size as the external input S to ensure dimensional
+consistency and computational efficiency. In addition, the
+matrices M and W can be substituted with convolutional
+layers. This design preserves the bio-inspired attributes of
+the network structure while markedly enhancing the model’s
+trainability and flexibility. Moreover, the characteristic of
+weight sharing significantly decreases the parameter count
+and enhances computation efficiency, rendering CCNN more
+suitable for large-scale image and video processing tasks.
+Currently, most CCNN applications use convolutional layers
+instead of two matrices [51], [53], [54].
+From a biological perspective, CCNN can simulate the
+chaotic dynamic behavior of biological neurons, which is
+fundamental to the human brain’s information processing and
+cognitive tasks. From a deep learning perspective, the dynamic
+attributes of CCNN enhance nonlinear expression capabilities.
+Moreover, the continuously differentiable output enhances
+the adaptability of the brain-inspired model to the gradient
+optimization demands of deep learning. In the proposed model,
+CCNN employs a structure similar to RNN for iterative updates in both the encoder and decoder. The dynamic threshold
+Eij (n) enables CCNN to capture the temporal attributes
+of features and employ memory mechanisms for enhanced
+predictive accuracy.
+Traditional CCNN models normally use the results of the
+last iteration as output. However, employing simply the results
+of the latest iteration as the output of the CCNN layer can only
+reflect the feature extraction capacity of CCNN at a single
+time point while ignoring the important information that the
+features may include at each time point. The primary visual
+cortex of the human brain has a similar processing method.
+While receiving external visual stimuli, the primary visual
+cortex gradually analyzes and integrates visual information
+through multi-stage and multi-time step activities [59], [60].
+Consequently, utilizing CCNN to process information across
+multiple temporal dimensions can more comprehensively simulate the processing mechanisms of the biological visual system, therefore improving the model’s ability in understanding
+and utilizing input data. The output of the CCNN layer utilized
+is presented in Eq. 2:
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+6
+
+Fig. 2. Overall architecture of proposed BIMII-Net. BIMII-Net consists of an encoder, a feature fusion part, and a decoder. The encoder is based on the
+Segformer structure. A CCNN layer is added after each Segformer layer and fused with the output through a residual connection to further iterate features.
+This part extracts multi-scale features from RGB and thermal images. The feature fusion part fuses the features from the encoder through the CEAEF-Module.
+The initial inputs in the decoder are generated in the section. The decoder further separates shallow-level features and deep-level features, extracting texture
+and skeleton information through the SFI-Module and DFI-Module, respectively. Subsequently, the MFE-Module fuses them to generate the final semantic
+segmentation result. Furthermore, the overall architecture is optimized through a multi-module joint supervision strategy.
+
+n+T
+
+1 X t
+Y (x)
+yT =
+T t=n
+
+(2)
+
+where n represents the initial number of iterations when
+entering the CCNN layer, T represents the iteration time of
+each CCNN layer. In the proposed model, we choose T = 4.
+y T denotes the final output of the CCNN layer.
+C. Cross Explicit Attention-Enhanced Fusion
+In multi-modal data fusion, the characteristics of different modalities often exhibit substantial disparities, making
+effective cross-modal feature interaction and fusion essential.
+Inspired by the EAEF module, we propose a novel CEAEFModule [24]. The primary changes are as follows:
+
+1) Both branches in the CEAEF-Module use the channel attention (CA). Compared with the original EAEF
+module, nonlinear interactions are introduced into the
+complementary branch to improve the data expression
+capability. This design enhances the alignment of subsequent features used for crossover and avoids uneven
+feature distribution.
+2) Proposed a crossover mechanism. The interaction between RGB and thermal images not only depends on
+the weight adjustment of CA but also introduces explicit
+cross-modal deep interaction within the branch. This design significantly enhances the complementarity between
+modalities, allowing features of different modalities to
+guide and optimize. The cross mechanism, in conjunction with deep convolution, enhances the representation
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+Fig. 3. The overview of the proposed DCCNN architecture. The DCCNN
+architecture consists of 7 CCNN layers, with the encoder comprising 4 CCNN
+layers and the decoder including 3 CCNN layers. Signal transmission between
+layers is facilitated through state parameters. Each CCNN layer processes
+information across multiple time steps, and its output is obtained by averaging
+the results of these time steps. Additionally, during the feature fusion stage,
+the signals from the final encoder layer are averaged before being passed on
+to the decoder.
+
+of interactive features and fully utilizes the complementary information between multiple modalities.
+3) Using the CBL module to adjust the dimension at the
+end of the module. Different from EAEFNet, which
+directly inputs the fused output to the next layer of
+the encoder, we divide the result into two levels and
+output it to the decoder. This design allows detailed
+information, such as contours and skeletons, to be better
+preserved, which is more suitable for the multi-module
+joint supervision strategy we adopt.
+The architecture of CEAEF-Module is shown in Fig. 4.
+CEAEF-Module consists of two branches, and the inputs are
+the outputs of the CCNN layer in the encoder, denoted as Ri
+and Ti . Firstly, we extract the CA of the two features as R and
+T , then multiply them by the dimension c and use the Sigmoid
+function for activation. In the first branch, the activation result
+(Sig(c · R × T )) is directly applied to Ri and Ti , where Sig
+represents Sigmoid activation. In the second branch, in order
+to avoid insufficient activation, 1−Sig(c·R ×T ) is multiplied
+
+7
+
+Algorithm 1 CCNN iterative algorithm in the RGB branch of
+the encoder.
+Input: RGB
+Output: Out1 , Out2 , Out3 , Out4
+Initialization: F (0) = 0, L(0) = 0, U (0) = 0, E(0) = 0,
+Y (0) = 0, initialize the convolutional layers Conv M and
+Conv W
+Function CCNN(X, F, L, E, Y, Conv M , Conv W ):
+F = e−αf F + Conv M (Y ) + X
+L = e−αl L + Conv W (Y )
+U = F (n) ⊙ (1 + βL)
+E = e−αe E + VE Y
+1
+Y = 1+e−(U
+−E)
+return F, L, E, Y, Conv M , Conv W
+Function CCNN_T(X, F, L, E, Y, Conv M , Conv W ):
+for t = 1, 2, 3, . . . , T do
+F, L, E, Y, Conv M , Conv W =
+CCN N (X, F, L, E, Y, Conv M , Conv W )
+Yt =Y
+end
+PT
+y T = T1 t=1 Y t
+return y T , F, L, E, Y, Conv M , Conv W
+Main:
+X1 = Segformer layer1(RGB)
+Out, F, L, E, Y, Conv M , Conv W =
+CCNN_T(X1 , F, L, E, Y, Conv M , Conv W )
+Out1 = Out + X1
+X2 = Segformer layer2(Out1 )
+Out, F, L, E, Y, Conv M , Conv W =
+CCNN_T(X2 , F, L, E, Y, Conv M , Conv W )
+Out2 = Out + X2
+X3 = Segformer layer3(Out2 )
+Out, F, L, E, Y, Conv M , Conv W =
+CCNN_T(X3 , F, L, E, Y, Conv M , Conv W )
+Out3 = Out + X3
+X4 = Segformer layer4(Out3 )
+Out, F, L, E, Y, Conv M , Conv W =
+CCNN_T(X4 , F, L, E, Y, Conv M , Conv W )
+Out4 = Out + X4
+
+with Ri and Ti for supplementation. This design ensures that
+the features in the two branches are fully activated in at least
+one branch, which improves the integrity and robustness of
+feature fusion. These processes are as follows:
+R = M LP (GAP (Ri ))
+T = M LP (GAP (Ti ))
+R′ = Sig(c · R × T ) · Ri
+T ′ = Sig(c · R × T ) · Ti
+
+(3)
+
+Ṙ = 1 − Sig(c · R × T ) · Ri
+Ṫ = 1 − Sig(c · R × T ) · Ti
+where GAP represents the global average pooling operation.
+To prevent the addition results from two branches from offsetting the Sigmoid activation, the original EAEF module employs CA in one branch. The proposed CEAEF-Module uses
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+8
+
+Fig. 4. Proposed CEAEF-Module. The CEAEF-Module consists of two branches, processing RGB and thermal image features, respectively. The introduction
+of channel attention enhances feature expression capabilities and aligns distributions. The module employs an explicit cross-modal deep interaction approach to
+improve feature representation and enhance complementarity across modalities. The features are ultimately integrated through a combination of deep separable
+convolution and spatial attention.
+
+CA on both branches, which improves the balance and stability
+of the subsequent cross mechanism. The cross mechanism is
+set subsequent to the CA. The features of the different modals
+in the two branches are concatenated, followed by refinement
+through the depthwise convolution layer. Subsequently, the
+results are added to the features after the first activation in the
+supplementary branch. The process of the cross mechanism is
+as follows:
+
+
+
+GateRI
+= Sig(M LP (GM P (DW (CAT (R′ , T ′ )))))
+GateT I
+
+
+GateRC
+= Sig(M LP (GM P (DW (CAT (Ṙ, Ṫ )))))
+GateT C
+RI = R′ · GateRI
+TI = T ′ · GateT I
+RC = Ṙ · GateRC
+TC = Ṫ · GateT C
+FI = DW (CAT (RI , TC )) + Ṙ
+FC = DW (CAT (RC , TI )) + Ṫ
+(4)
+where DW denotes depthwise convolution, CAT represents
+the concatenation operation, and GMP represents the global
+maximum pooling operation. (RI , TI ) and (RC , TC ) denote
+the outputs of CA, while (FI , FC ) represent the outputs of
+the cross mechanism. Finally, we use spatial attention (SA)
+to integrate the features. The traditional 1 × 1 convolution
+in spatial attention is substituted with a depthwise separable
+convolution, therefore increasing the capacity to extract the
+spatial information while diminishing the parameter number
+and computational complexity. The process of SA is as follows:
+
+FI ′ = DS(FI )
+FC ′ = DS(FC )
+
+VF I
+= Sof t(CAT (FI ′ , FC ′ )))
+VF C
+
+
+
+(5)
+
+Ei = VF I ∗ FI + VF C ∗ FC
+where DS represents depthwise separable convolution, Soft
+represents the Softmax operation, (VF I , VF C ) represents the
+result of the Softmax operation, and Ei represents the final
+output of the CEAEF-Module.
+D. Complementary Interactive Multi-Layer Decoder
+1) Shallow-level Feature Iteration Module: We propose a
+novel SFI-Module to explore texture information in shallowlevel features, and its architecture is shown in Fig. 5 (a).
+SFI-Module receives three inputs: E1 , E2 , and Sj (the input
+of the first layer uses E4 instead of Sj ). Firstly, the three
+features are upsampled and adjusted to the same size by
+the CBL module. Since the shallow-level features are rich in
+detailed information and similar, we use element-by-element
+addition to effectively preserve the modal features and enhance
+the expression of shared features. For E1 and the output
+of the previous MFE-Module Sj , the two features are quite
+different, so a concatenation operation is required to preserve
+the independent information of each modality. Subsequently,
+we employ the CBL module to extract more information and
+stabilize values, followed by a concatenation operation to
+process the combined features. These processes are as follows:
+Fadd = CBL(E1 ) + CBL(E2 )
+Fcat = CAT (CBL(E1 ), CBL(Sj ))
+Ff use = CAT (CBL(Fadd ), CBL(Fcat ))
+
+(6)
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+9
+
+Subsequently, we adopted the separable convolution module
+with a CCNN layer. CCNN layer enhances the feature expression by multiple iterations. After the CCNN layer, we use
+pointwise convolution and depthwise separable convolution
+to enhance feature extraction efficiency and further optimize
+feature representation. The residual connection after the convolution layer accelerates model convergence and preserves
+the integrity of the original information. The process of the
+separable convolution module is as follows:
+
+attention (TSA) to strengthen the interaction between channels
+and space. This module reintegrates the channel dimension and
+the spatial dimension through two-dimensional splicing and
+reconstruction. The process of the TSA module is as follows:
+X = Conv(Fout )
+X1r = Linearr (Normr (X (B×CH×W ) ))
+X2c = Linearc (Normc (X
+
+Fi , Li , Yi , Ei = CCN N (Fi−1 , Li−1 , Ei−1 , Ff use )
+for i ∈ {1, . . . , T }
+T
+
+1X
+CCN N out =
+Yi
+T i=1
+
+(7)
+
+Fout = DS(P W (CCN N out )) + Ff use
+where PW stands for pointwise convolution. We then use
+multi-scale dilated feature extraction (MDFE) to enhance texture and boundary information. Shallow-level features retain
+more local details, while the dilated convolution in MDFE
+focuses more on capturing local information and can better
+extract complex texture information in shallow-level features.
+The process of MDFE is as follows:
+F1 = CBL (Fout , rate = 1)
+F3 = CBL (Fout , rate = 3)
+F6 = CBL (Fout , rate = 6)
+
+(8)
+
+F12 = CBL (Fout , rate = 12)
+Soutj = CBL(CAT (F1 , F3 , F6 , F12 ))
+2) Deep-level Feature Iteration Module: The DFI-Module
+is used to process deep-level features, and its architecture is
+shown in Fig. 5 (c). The input of this module is similar to
+SFI-Module, consisting of E3 , E4 , and Dj (the first layer
+uses E4 instead of Dj ), where E3 and E4 represent deeplevel features. The module upsamples the three inputs to
+adjust the size and then concatenates the two deep-level
+features. The concatenation procedure preserves the integrity
+of deep features and enhances their semantic representation.
+The features are then used in CA to enhance the representation
+of global semantics and reduce redundant information. Since
+deep-level features often include global semantic information,
+the supervision strategy used by the DFI-Module prioritizes
+the extraction of global semantics. Subsequently, we multiply
+the result of CA by the sum of E3 and E4 , therefore enhancing the semantics of key channel features and enhancing
+nonlinear expression capabilities. Ultimately, we incorporate
+the result and Dj into the SA to achieve the complementarity
+of semantic and spatial information.
+Fcat = CAT (CBL(E3 ), E4 )
+Ff use34 = CA(CBL(Fcat )) ∗ (CBL(E3 ) + E4 )
+
+(9)
+
+Ff use = SA(Ff use34 , Dj )
+Subsequently, we introduced the separable convolution
+module and connected it with a two-dimensional splicing
+
+(B×W C×H)
+
+))
+
+(B×CW ×H)
+
+))
+
+X1c = Linearc (Normc (X1r
+
+(10)
+
+(B×CH×W )
+X2r = Linearr (Normr (X2c
+))
+(B×C×H×W )
+(B×C×H×W )
+X12 = X1c
++ X2r
+(B×C×H×W )
+(B×C×H×W )
+Doutj = CAT (X12 , X1c
+, X2r
+)
+
+where Conv denotes convolution, Linear denotes linear
+transformation, and Norm represents normalization. The superscript of X (e.g., X (B×CH×W ) ) represents the shape of the
+tensor at a specific stage, where B indicates the batch size, C
+indicates the number of channels, and H and W represent the
+height and width of the feature map, respectively. The TSA
+separates the input features into two branches: one that first
+expands the row dimension followed by the column dimension,
+and the other branch that expands the features in reverse
+order. The two results are then summed and concatenated
+with the initial input. Employing the TSA module to integrate
+deep-level features can effectively enhance the combination of
+global information, hence facilitating a more comprehensive
+understanding of the target’s shape, location, and semantics.
+3) Multi Feature Enhancement Module: Inspired by the
+cascaded multi-modal fusion unit, we propose a novel MFEModule [61]. This module receives three inputs: the outputs
+of SFI-Module and DFI-Module, Soutj and Doutj , and the
+output of the previous MFE-Module, Mj−1 (the input of the
+first layer is replaced by E4 ). Its architecture is shown in Fig.
+5 (b).
+Initially, we use the first learnable parameter to perform a
+weighted summation of the processed shallow-level and deeplevel features, subsequently using the second parameter weight
+to sum up the result with Mj−1 . The utilization of learnable
+parameters for double weighted summation enables dynamic
+adjustment of the fusion ratio, allowing for more flexible
+control over the contribution of the input of various levels
+of information. The process is as follows:
+Ff use = (1 − δ) · Conv(Mj−1 )
++ δ · Conv(γ · Soutj + (1 − γ) · Doutj )
+
+(11)
+
+The combined output is transmitted into the CA, and the result is multiplied by (Soutj +Doutj ) to enhance the selectivity
+of significant semantic channels. Then the result is added to the
+original fused feature Ff use through the residual connection
+mechanism to ensure the integrity of the information and the
+robustness of the feature expression. This module employs two
+identical branch designs with CA, delivering the processed
+results to the SFI-Module and DFI-Module, respectively.
+This design effectively emphasizes the significant semantic
+channels, enabling the features to adapt to different feature
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+10
+
+Fig. 5. Modules overall architecture: (a) The shallow-level feature iteration module (SFI-Module) is mainly used to extract and enhance the texture information
+in the shallow-level features. (b) The multi-feature enhancement module (MFE-Module) achieves the dynamic integration of shallow-level and deep-level
+features. (c) The deep-level feature iteration module (DFI-Module) processes deep-level features and extracts global semantic information.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+11
+
+representations in the subsequent fusion process. Finally, the
+results of the two branches are concatenated with Ff use , and
+the features are integrated through the convolution layer to
+generate the enhanced semantic segmentation results. In the
+final semantic supervision part, the semantic segmentation
+results generated by the three MFE-Modules are added layer
+by layer for joint supervision. The process of generating the
+final three outputs is as follows:
+
+model for each class to the number of all predicted pixels
+for that class. mIoU represents the average of the ratio of the
+intersection and union of the model’s predicted results for each
+class and the true value. The formulas for these two evaluation
+indicators are as follows:
+
+Sj = CA(Ff use ) · (Soutj + Doutj ) + Ff use
+
+1 X
+TPi
+mIoU =
+N i=1 TPi + FPi + FNi
+
+Dj = CA(Ff use ) · (Soutj + Doutj ) + Ff use
+
+(12)
+
+We use a multi-module joint supervision strategy, as shown
+in Fig. 2. We perform boundary supervision and binary supervision on the contour features output by the SFI-Module and
+the skeleton features output by the DFI-Module, respectively.
+Furthermore, we perform semantic supervision on the summation result of the three MFE-Modules. The supervision strategy
+we adopted regards multiple supervision heads as multi-task
+learning and uses learnable weights to perpetually optimize
+the weight values during training. We use the multi-task loss
+function proposed by Ref. [39] with cross-entropy loss for
+supervision:
+
+7
+
+(14)
+
+where N represents the number of classes, TPi , FPi and FNi
+represent the true positives, false positives and false negatives
+in each class i, respectively.
+
+E. Multi-Module Joint Supervision Strategy
+
+3
+6
+X
+X
+1
+1
+L
++
+bini
+2
+2 Lbou(j−3)
+2σ
+2σ
+i
+j
+i=1
+j=4
+
+TPi
+1 X
+N i=1 TPi + FNi
+N
+
+Mj = CBL(CAT (Ff use , Sj , Dj ))
+
+Lf inal =
+
+N
+
+mAcc =
+
+(13)
+
+X
+1
++
+Lse +
+log σk
+2σ7
+k=1
+
+where σk (k ∈ {1, 2, 3, 4, 5, 6, 7}) represents the learnable
+weight, Lbini denotes binary supervision, Lbou(j−3) represents
+boundary supervision, and Lse denotes semantic supervision.
+
+B. Implementation Details
+During training, we use random cropping and random
+flipping with a probability of 50% for data augmentation.
+For the encoder part, we use the SegFormer-B3 model pretrained on the ImageNet dataset [58], [63]. We use Ranger
+as the optimizer and set a constant learning rate. We divide
+the training process into two stages: (a) The first stage is
+the direct training stage. In the first stage, the time step of
+each continuous-coupled neural network (CCNN) layer is 1
+(T = 1). We set the batch size to 2, the learning rate to 10−4 ,
+and the weight decay to 5 × 10−4 . (b) The second stage is the
+fine-tuning stage. We set the time step of the CCNN layer to
+4 (T = 4), the batch size to 1, the learning rate to 10−5 , the
+weight decay is unchanged, and the gradient clipping with a
+maximum norm of 20 is used. For the MFNet dataset, we use
+75 epochs for direct training and 10 epochs for fine-tuning. For
+PST900 dataset, we use 110 epochs for direct training and 15
+epochs for fine-tuning. Our experiments are all conducted on
+the Pytorch 2.3.0 framework and use an RTX 4090 graphics
+card with CUDA 12.4 and 24GB RAM.
+
+IV. E XPERIMENTS
+A. Datasets and Evaluation Metrics
+
+C. Comparative experiment
+
+We use two popular public datasets to evaluate BIMIINet. The MFNet dataset is proposed by Ha et al. It records
+nine categories, including background, car, person, bike, curve,
+car stop, guardrail, color cone, and bump [17]. The dataset
+contains 1569 pairs of RGB-T images acquired with an InfRec
+R500 camera, including 820 pairs of daylight scenes and 749
+pairs of nocturnal scenes. The dataset has a resolution of
+480 × 640, with a distribution ratio of 2:1:1 for the training
+set, validation set, and test set, respectively.
+The second dataset is PST900, proposed by Shivakumar
+et al. [62]. This dataset has five categories: background,
+hand drill, backpack, fire extinguisher, and survivor, with a
+resolution of 720 × 1280. The dataset comprises 894 pairs of
+RGB-T pictures, partitioned into a training set of 597 pairs
+and a test set of 288 pairs.
+We use two indicators to evaluate the performance of
+semantic segmentation: mean accuracy (mAcc) and mean
+intersection over union (mIoU). mAcc represents the average
+of the ratio of the number of correct pixels predicted by the
+
+1) MFNet: For the MFNet dataset, we compare BIMII-Net
+with the following methods: APCNet(4c) [64], DFN(4c) [65],
+FRRN(4c) [66], BiSeNet(4c) [67], MFNet [17], FuseNet [68]
+, ABMDRNet [18], RTFNet [13], MMNet [69], GCNet [20],
+DooDLeNet [70], RFIENet [71], MMDRNet [34], ECGFNet
+[72] and MMSMCNet [37]. Tab. I shows the quantitative results. It can be seen that the proposed BIMII-Net outperforms
+most other methods. Our method achieved four first places and
+six second places in the above results. Our results perform
+well on objects with small pixel appearance ratios such as
+”car stop”, ”guardrail” and ”color cone”, and the prediction
+effects of each category are relatively balanced, which reflects
+the robustness of the proposed method in the problem of class
+inconsistency.
+We test RGB-T images during the day and at night in Tab.
+II. It can be seen that although our model does not have a
+clear advantage in the daytime or nighttime indicators, its
+overall mIoU indicator exceeds that of most models. These
+results further demonstrate that our model has more balanced
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+12
+
+TABLE I
+C OMPARISON OF RESULTS ON THE MFN ET DATASET. T HE FIRST AND SECOND PLACE RESULTS OF OUR NETWORK IN EACH COLUMN ARE HIGHLIGHTED
+IN RED AND BLUE , RESPECTIVELY.
+Method
+
+APCNet(4c) [64]
+DFN(4c) [65]
+FRRN(4c) [66]
+BiSeNet(4c) [67]
+MFNet [17]
+FuseNet [68]
+ABMDRNet [18]
+RTFNet [13]
+MMNet [69]
+GCNet [20]
+DooDLeNet [70]
+RFIENet [71]
+MMDRNet [34]
+ECGFNet [72]
+MMSMCNet [37]
+BIMII-Net(Ours)
+
+Car
+
+Person
+
+Bike
+
+Curve
+
+Color Cone
+
+Bump
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+81.2
+84.4
+74.7
+84.1
+65.9
+75.6
+84.8
+87.4
+86.0
+86.7
+87.5
+85.7
+83.5
+89.2
+87.7
+
+74.3
+73.2
+66.2
+72.0
+67.0
+75.2
+90.0
+79.3
+83.9
+89.6
+81.3
+81.1
+89.3
+85.2
+93.2
+82.6
+
+59.8
+65.0
+60.8
+63.2
+58.9
+66.3
+69.6
+70.3
+72.0
+72.2
+73.0
+70.3
+72.1
+69.1
+72.2
+
+64.6
+75.5
+62.8
+74.1
+53.9
+64.5
+75.7
+76.8
+69.3
+77.5
+76.6
+78.7
+74.7
+72.9
+83.4
+75.9
+
+55.9
+60.9
+50.3
+60.1
+42.9
+51.9
+60.3
+62.7
+59.0
+60.0
+62.5
+62.5
+61.5
+61.6
+63.5
+63.0
+
+42.0
+54.0
+41.2
+45.1
+36.2
+51.0
+64.0
+60.7
+68.9
+58.9
+62.9
+65.7
+62.8
+74.4
+55.5
+
+33.0
+40.4
+35.0
+36.7
+29.9
+37.8
+45.1
+45.3
+43.2
+42.2
+46.7
+44.7
+46.9
+40.5
+46.4
+42.8
+
+36.8
+38.9
+12.5
+34.2
+12.5
+17.4
+44.1
+38.5
+38.3
+36.2
+44.2
+42.7
+44.8
+56.6
+47.7
+
+25.1
+25.7
+11.5
+25.3
+9.9
+15.0
+33.1
+29.8
+24.7
+30.7
+28.0
+34.3
+32.7
+30.8
+41.9
+37.3
+
+33.2
+10.2
+0.0
+18.2
+0.1
+0.0
+31.0
+0.0
+45.8
+35.2
+39.3
+53.9
+45.2
+26.9
+54.3
+
+7.1
+4.0
+0.0
+5.0
+0.0
+0.0
+5.1
+0.0
+4.6
+6.2
+5.1
+7.9
+7.7
+11.1
+8.8
+11.8
+
+47.6
+48.3
+37.2
+47.4
+30.3
+31.1
+61.7
+45.5
+59.6
+56.9
+62.9
+59.9
+57.2
+70.2
+57.0
+
+37.5
+42.5
+34.0
+42.2
+25.2
+21.4
+47.4
+29.1
+42.2
+49.5
+50.7
+44.5
+48.2
+49.7
+48.8
+50.8
+
+55.7
+55.8
+35.2
+39.8
+30.0
+51.9
+66.2
+74.7
+82.1
+74.8
+79.0
+73.0
+65.1
+77.5
+68.9
+
+51.8
+47.4
+34.6
+35.9
+27.7
+45.0
+50.0
+55.7
+50.7
+52.6
+65.8
+60.6
+53.4
+50.9
+57.6
+62.3
+
+TABLE II
+R ESULTS FOR DAYTIME AND NIGHTTIME IMAGES . T HE FIRST AND
+SECOND PLACE RESULTS OF OUR NETWORK IN EACH COLUMN ARE
+HIGHLIGHTED IN RED AND BLUE .
+
+APCNet(4c)
+DFN(4c)
+FRRN(4c)
+BiSeNet(4c)
+MFNet
+RTFNet
+FuseNet
+DooDLeNet
+MMSMCNet
+Ours
+
+Guardrail
+
+86.6
+90.0
+81.9
+89.7
+77.2
+81.0
+94.3
+93.0
+94.2
+91.7
+92.0
+93.4
+89.4
+96.2
+93.3
+
+prediction performance during the day and at night and has
+stronger robustness.
+
+Methods
+
+Car Stop
+
+Daytime
+
+Nighttime
+
+Test
+
+mAcc
+
+mIoU
+
+mAcc
+
+mIoU
+
+mAcc
+
+mIoU
+
+55.4
+53.7
+45.1
+52.1
+42.6
+60.0
+49.5
+58.8
+81.2
+62.3
+
+42.4
+42.2
+40.0
+44.5
+36.1
+45.8
+41.0
+50.1
+56.9
+52.4
+
+54.7
+52.4
+41.6
+50.3
+41.4
+60.7
+48.9
+64.1
+72.2
+66.3
+
+46.4
+44.6
+37.3
+45.0
+36.8
+54.8
+43.9
+55.7
+58.7
+56.1
+
+60.0
+60.5
+48.5
+57.7
+45.1
+63.1
+52.4
+67.9
+75.2
+70.5
+
+49.9
+52.0
+44.2
+50.0
+39.7
+53.2
+45.6
+57.3
+58.1
+58.4
+
+The visualization results of the comparative experiment are
+shown in Fig. 6, where the images used for comparison are
+divided into daytime and nighttime [21], [73]. It can be seen
+that the predictions and actual results of BIMII-Net have high
+similarity and fewer misidentifications at night and during the
+day. Especially in the depiction of details, our model can
+more accurately identify local contour information such as the
+swinging arms of pedestrians, the distance between shoulders
+and legs, etc. In addition, our model has a high accuracy in
+predicting less frequent categories such as guardrails. Overall,
+our model has excellent prediction effects on both global
+skeleton information and local contour positioning.
+Fig. 7 shows the class activation map of our proposed model
+in three categories. It can be seen that the MMSMCMet pays
+more attention to the contour part of the category, and there
+is some feature confusion. MFNet and RTFNet are not clear
+enough for detecting boundaries. Overall, our model predicts
+more accurately and has clearer boundaries.
+2) PST900: In the PST900 dataset, we compared our model
+with ERFNet [74], RTFNet [13], PSTNet [62], CGFNet [75],
+MFFENet [16], MMDRNet [34], FDCNet [76], and MMSM-
+
+mAcc
+
+mIoU
+
+60.0
+60.5
+48.5
+57.7
+45.1
+52.4
+69.5
+63.1
+62.7
+72.7
+67.9
+71.0
+72.4
+69.1
+75.2
+70.5
+
+49.9
+52.0
+44.2
+50.0
+39.7
+45.6
+54.8
+53.2
+52.8
+55.3
+57.3
+57.0
+56.0
+55.3
+58.1
+58.4
+
+CNet [37]. Tab. III shows that our method achieved five first
+places and four second places in the above results, which is
+better than most other methods. Especially in the background
+and hand drill categories, our model achieved better results.
+Additionally, compared with other models, the indicators of
+each category of our model are more balanced.
+3) Complexity: We analyzed the complexity of our model
+in Tab. IV, using four indicators: number of parameters,
+number of floating-point operations, model inference speed
+using GPU, and the amount of memory occupied by model
+parameters. It can be seen that compared with the models in
+recent years, the number of parameters of our model is lower
+than that of most models, but the number of floating-point
+operations and inference speed are higher than other models.
+Overall, the complexity of our model is still a certain distance
+away from true brain-like simulation. Our future work will
+continue to optimize the structure of the model and realize a
+model with low computational complexity.
+D. Ablation Experiment
+1) Effectiveness of Each Module: The upper part of Tab.
+V shows the ablation results of each module in BIMIINet, where (w/o CEAEF) represents the ablation results of
+the cross explicit attention-enhanced fusion module (CEAEFModule). The ablation experiments remove the CEAEFModule, shallow-level feature iteration module (SFI-Module),
+deep-level feature iteration module (DFI-Module), multifeature enhancement module (MFE-Module), and CCNN layer
+in turn. It can be seen that the three modules of the decoder
+and the CEAEF-Module all play an important role in our
+model. Without the MFE-Module, mAcc and mIoU are only
+62.3 and 54.7, respectively, and the prediction effect decreases
+the most. After removing the CEAEF-Module, mAcc and
+mIoU are reduced to 65.1 and 55.0, respectively, indicating
+that this module can effectively enhance the fusion of global
+information. In addition, the ablation experiment on the CCNN
+layer reflects the role of the brain-inspired model in improving
+the model prediction effect.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+13
+
+Fig. 6. Visualization results of multiple models on the MFNet dataset. The first four rows represent the segmentation results during the day, and the last four
+rows represent the segmentation results at night.
+TABLE III
+C OMPARISON OF RESULTS ON THE PST900 DATASET. T HE FIRST AND SECOND PLACE RESULTS OF OUR NETWORK IN EACH COLUMN ARE HIGHLIGHTED
+IN RED AND BLUE , RESPECTIVELY.
+Method
+
+ERFNet [74]
+RTFNet [13]
+PSTNet [62]
+CGFNet [75]
+MFFENet [16]
+MMDRNet [34]
+FDCNet [76]
+MMSMCNet [37]
+BIMII-Net(Ours)
+
+Background
+
+Hand-Drill
+
+Backpack
+
+Fire-Extinguisher
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+Acc
+
+IoU
+
+99.78
+99.69
+99.50
+99.72
+99.55
+99.78
+
+98.73
+99.02
+98.85
+99.30
+99.40
+98.90
+99.15
+99.39
+99.41
+
+7.79
+70.50
+77.10
+82.52
+97.96
+92.62
+
+52.76
+7.07
+53.60
+59.72
+72.50
+40.60
+70.36
+62.36
+73.51
+
+79.96
+87.55
+79.10
+77.45
+96.94
+90.56
+
+68.08
+74.17
+69.20
+82.00
+81.02
+71.10
+72.17
+89.22
+86.89
+
+62.39
+96.30
+77.90
+91.77
+97.36
+92.86
+
+58.79
+51.93
+70.12
+71.71
+66.38
+52.40
+71.52
+73.29
+81.20
+
+78.51
+86.29
+69.80
+78.36
+84.28
+75.92
+
+34.38
+70.11
+50.03
+77.42
+75.60
+62.30
+72.36
+74.70
+72.26
+
+TABLE IV
+C OMPARISON OF COMPLEXITY IN MULTIPLE MODELS .
+Models
+RTFNet
+MFNet
+FEANet
+GMNet
+MMSMCNet
+Ours
+
+Params/M
+
+FLOPs/G
+
+FPS
+
+Size/MB
+
+254.51
+0.74
+255.21
+153.01
+95.60
+99.46
+
+337.46
+8.42
+337.47
+149.90
+189.15
+260.40
+
+24.08
+193.96
+27.24
+40.79
+14.69
+12.80
+
+970.88
+2.81
+973.54
+583.70
+364.69
+379.41
+
+We also visualized the ablation results of each key module,
+as shown in Fig. 8. It can be seen that when some modules are
+missing, the model’s contour is not clear and misrecognition
+occurs. These problems are particularly prominent when the
+decoder module is missing. Our model better depicts details
+
+Survivor
+
+mAcc
+
+mIoU
+
+65.69
+88.06
+81.30
+85.96
+95.20
+90.37
+
+62.55
+60.46
+68.36
+78.03
+78.98
+68.70
+77.11
+79.80
+82.65
+
+such as the car’s tires and swinging arms, reflecting the
+importance of each module.
+2) Validity of the Internal structure of Modules: To further verify the rationality of module design, we conducted
+a detailed ablation experiment on the internal structure of
+modules, and the results are shown in the middle part of
+Tab. V. The experimental design includes replacing or removing certain submodules: (a) (w EAEF) means replacing
+the CEAEF-Module with the EAEF module, (b) (SFI-Module
+w/o MDFE) means removing the multi-scale dilated feature
+extraction (MDFE) operation in the SFI-Module, (c) (SFIModule w/o CCNN) means removing the CCNN layer in the
+SFI-Module, (d) (DFI-Module w/o TSA) means removing the
+two-dimensional splicing attention (TSA) in the DFI-Module,
+(e) (DFI-Module w/o SA) means removing the SA in the DFIModule, and (f) (DFI-Module w/o CCNN) means removing
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+14
+
+supervision strategy we adopted. The experimental design
+includes removing the binary loss lossbin , the boundary loss
+lossbou , the loss supervision of each layer loss1,2,3 , and using
+fixed loss weights. The experiment shows that lossbin and
+lossbou play a key role in global localization and boundary
+optimization, respectively. After removing them, their mAcc
+and mIoU are reduced to 66.7/54.8 and 62.4/54.9, respectively.
+Additionally, the loss supervision of each layer (loss1,2,3 )
+can provide effective supervision on features at different
+levels. After all are removed, the model performance drops
+significantly (mAcc and mIoU drop to 65.0/55.2). In addition,
+the use of fixed loss weights also has a significant impact on
+performance, where the weight (3, 1, 1) means:
+(
+1, k ∈ {1, 2, 3, 4, 5, 6}
+(15)
+σk =
+3, k = 7
+
+TABLE V
+R ESULTS OF ABLATION EXPERIMENTS . T HE UPPER PART OF THE TABLE
+SHOWS THE ABLATION RESULTS OF DIFFERENT MODULES , THE MIDDLE
+
+where σk represents a fixed weight, which achieves 65.23
+and 54.75 on mAcc and mIoU, respectively, which is better
+than the fixed weight (1, 1, 1), but still lower than the
+multi-task loss function we used. These experimental results
+demonstrate the effectiveness and rationality of our proposed
+multi-module joint supervision strategy.
+
+PART SHOWS THE ABLATION RESULTS OF DIFFERENT STRUCTURES
+WITHIN THE MODULES , AND THE LOWER PART SHOWS THE ABLATION
+RESULTS OF DIFFERENT SUPERVISION STRATEGIES .
+
+E. Effectiveness of CCNN
+
+Fig. 7. Visualization of class activation maps of multiple models on the
+MFNet dataset, including three categories: car, person, and bike.
+
+Models
+
+mAcc
+
+mIoU
+
+Model (w/o CEAEF)
+Model (w/o SFI-Module)
+Model (w/o DFI-Module)
+Model (w/o MFE-Module)
+Model (w/o CCNN)
+
+65.1
+66.8
+67.1
+62.3
+68.6
+
+55.0
+54.3
+55.3
+54.7
+56.1
+
+Model (w EAEF)
+Model (SFI-Module w/o MDFE)
+Model (SFI-Module w/o CCNN)
+Model (DFI-Module w/o TSA)
+Model (DFI-Module w/o SA)
+Model (DFI-Module w/o CCNN)
+
+68.2
+61.9
+63.4
+68.1
+64.0
+64.1
+
+58.1
+53.8
+53.5
+56.0
+55.3
+56.3
+
+Model (w/o lossbin )
+Model (w/o lossbou )
+Model (w/o loss1,2 )
+Model (w/o loss1,3 )
+Model (w/o loss2,3 )
+Model (w/o loss1,2,3 )
+Model (w loss weight(3,1,1))
+Model (w loss weight(1,1,1))
+Model (Ours)
+
+66.7
+62.4
+68.4
+66.9
+66.4
+65.0
+65.2
+65.1
+70.5
+
+54.8
+54.9
+57.3
+55.6
+55.3
+55.2
+54.8
+53.6
+58.4
+
+the CCNN layer in the DFI-Module. The experiments show
+that the improved CEAEF-Module outperforms the traditional
+EAEF module in global information fusion and effectively
+improves the prediction effect. In addition, MDFE in the
+SFI-Module is the key to performance improvement. After
+removing it, the model performance drops most significantly
+(61.9/53.8). Besides, the use of CCNN layers in SFI-Module
+and DFI-Module also effectively improves the model’s prediction ability. These experimental results verify the positive
+role of our proposed new module and improved design in
+improving model performance.
+3) Effectiveness of Supervision Strategy: The lower part of
+Tab. V confirms the effectiveness of the multi-module joint
+
+At present, no model has been found that uses braininspired computing for multi-modal semantic segmentation. In
+the comparative experiment of spiking neural network (SNN)
+models, we tried to use the most advanced SNN architecture
+to conduct experiments, which is shown in Tab. VI. The
+experimental results show that the existing brain-inspired computing architecture performs poorly in multi-modal semantic
+segmentation tasks, and its prediction effect is much lower
+than that of the proposed architecture based on CCNN. The
+BIMII-Net proposed by us is better than the current state-ofthe-art method (SOTA) in brain-inspired models.
+To further verify the effectiveness of CCNN, we used
+different brain-inspired models (pulse-coupled neural network
+(PCNN) and LIF) to replace CCNN for experiments [77].
+Among them, Nolinking CCNN and Nolinking PCNN represent CCNN and PCNN with β = 0 and VF = 0, respectively. Their characteristics are that the internal neurons are
+independent of each other and do not perform coupling operations. Compared with traditional CCNN, Nolinking CCNN
+has lower computational complexity but cannot simulate the
+characteristics of biological neurons more accurately.
+For the non-differentiable problem of spike output, we
+use the alternative gradient method proposed by SpikingJelly
+[78]. The results show that the Nolinking state of PCNN
+has better performance, with mAcc and mIoU of 65.5 and
+56.5, respectively, which is the best performance of the braininspired model using spike output in the experiment. In
+addition, the indicators of the traditional LIF model are the
+worst compared with other models, with mAcc and mIoU of
+only 41.7 and 32.8. It can be found that the prediction effect
+of the brain-inspired models with spike output in the table
+(PCNN, Nolinking PCNN and LIF) in the state of multiple
+iterations (T = 4) is slightly reduced, indicating that these
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+15
+
+Fig. 8. Visualization of ablation experiment results for different modules.
+
+models are not suitable for too many iterations. In general, the
+prediction effects of the brain-inspired models listed in Tab.
+VI are lower than those of CCNN, indicating that CCNN has
+better performance advantages when processing multi-modal
+data.
+TABLE VI
+C OMPARISON OF RESULTS OF DIFFERENT BRAIN - INSPIRED COMPUTING
+MODELS ON THE MFN ET DATASET.
+Models
+
+T
+
+mAcc
+
+mIoU
+
+Meta-SpikeFormer [46]
+Spiking-Unet [79]
+
+4
+1
+4
+1
+4
+1
+4
+1
+4
+1
+4
+
+12.9
+11.1
+65.5
+64.9
+68.0
+64.7
+70.2
+69.4
+41.7
+40.1
+67.2
+70.5
+
+11.0
+10.3
+56.5
+56.3
+56.5
+55.7
+57.0
+57.5
+32.8
+31.7
+57.6
+58.4
+
+Model (w Nolinking PCNN)
+Model (w PCNN)
+Model (w Nolinking CCNN)
+Model (w LIF)
+Model (w CCNN)
+
+We conducted an ablation experiment on the size of the
+convolutional layer used in CCNN in Tab. VII. It can be
+seen that the convolutional layer size of 7 × 7 shows the best
+performance, followed by the dilated convolution of 5 × 5,
+whose mAcc and mIoU are 68.7 and 56.3, respectively. The
+experimental results show that the size of the convolutional
+layer has a significant impact on the feature modeling ability
+and final performance of the model.
+TABLE VII
+C OMPARISON OF RESULTS ON THE MFN ET DATASET USING
+CONVOLUTION KERNELS OF DIFFERENT SIZES IN CCNN.
+Models
+
+Model (w CCNN)
+
+Conv Size
+
+mAcc
+
+mIoU
+
+3×3
+5 × 5, 2 dilated
+5×5
+7 × 7, 3 dilated
+7×7
+
+66.2
+68.7
+64.8
+66.0
+70.5
+
+56.0
+56.3
+55.5
+55.2
+58.4
+
+F. Failure Case
+We found that there are several groups of failed cases
+when using the proposed BIMII-Net, as shown in Fig. 9.
+It can be seen that the first row of Fig. 9 misidentifies the
+stop sign as a guardrail or other category, and there is a
+case of misrecognition, while the second row fails to fully
+recognize the stop sign, and there is a case of insufficient
+recognition. The misrecognition of these two rows is caused
+by the occlusion of the target. In addition, the third and fourth
+rows have misrecognition of pedestrians and bicycles and
+omission of color cones, respectively, which are all caused
+by the small size of the target. However, compared with other
+models, it can be seen that these problems also exist in them,
+and most models are more serious than our proposed model.
+
+Fig. 9. Four sets of failure cases for multiple models.
+
+V. C ONCLUSION
+In this paper, we propose a novel RGB-T road scene semantic segmentation model, Brain-Inspired Multi-Iteration Interaction Network (BIMII-Net). The proposed deep continuouscoupled neural network (DCCNN) utilizes the iterative optimization mechanism of the brain-inspired model continuouscoupled neural network (CCNN) to facilitate layer-by-layer
+fusion and progressive updates of multi-scale features, thus
+effectively capturing texture and local detail information. In
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+addition, the improved cross explicit attention-enhanced fusion
+module (CEAEF-Module) we developed fully integrates multimodal information from RGB and thermal images through a
+complementary branch design, significantly enhancing the interaction between different features. Furthermore, the complementary interactive multi-layer decoder utilizes the integration
+of the shallow-level feature iteration module (SFI-Module),
+the deep-level feature iteration module (DFI-Module), and the
+multi-feature enhancement module (MFE-Module) to facilitate
+the complementary extraction of global skeleton and local detail information, thereby enhancing the segmentation efficacy.
+Experiments across multiple datasets confirm the superior performance of the proposed method, and comprehensive ablation
+experiments demonstrate the effectiveness of the architecture
+and modules. However, the complexity and computational
+requirements of the model may still impose specific constraints
+in practical applications. In future work, we aim to optimize
+the architecture of BIMII-Net to develop a lightweight and
+energy-efficient model suitable for real-world deployment.
+R EFERENCES
+[1] J. Li, F. Jiang, J. Yang, B. Kong, M. Gogate, K. Dashtipour, and
+A. Hussain, “Lane-deeplab: Lane semantic segmentation in automatic
+driving scenarios for high-definition maps,” Neurocomputing, vol. 465,
+pp. 15–25, 2021.
+[2] K. Muhammad, T. Hussain, H. Ullah, J. D. Ser, M. Rezaei, N. Kumar,
+M. Hijji, P. Bellavista, and V. H. C. de Albuquerque, “Vision-based
+semantic segmentation in scene understanding for autonomous driving:
+Recent achievements, challenges, and outlooks,” IEEE Transactions on
+Intelligent Transportation Systems, vol. 23, no. 12, pp. 22 694–22 715,
+2022.
+[3] Z. Chen, Z. Tian, J. Zhu, C. Li, and S. Du, “C-cam: Causal cam
+for weakly supervised semantic segmentation on medical image,” in
+Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition (CVPR), June 2022, pp. 11 676–11 685.
+[4] I. Qureshi, J. Yan, Q. Abbas, K. Shaheed, A. B. Riaz, A. Wahid,
+M. W. J. Khan, and P. Szczuko, “Medical image segmentation using
+deep semantic-based methods: A review of techniques, applications and
+emerging trends,” Information Fusion, vol. 90, pp. 316–352, 2023.
+[5] S. Ainetter and F. Fraundorfer, “End-to-end trainable deep neural network for robotic grasp detection and semantic segmentation from rgb,”
+in 2021 IEEE International Conference on Robotics and Automation
+(ICRA), 2021, pp. 13 452–13 458.
+[6] D. Su, H. Kong, Y. Qiao, and S. Sukkarieh, “Data augmentation for
+deep learning based semantic segmentation and crop-weed classification
+in agricultural robotics,” Computers and Electronics in Agriculture, vol.
+190, p. 106418, 2021.
+[7] L. Alzubaidi, J. Zhang, A. J. Humaidi, A. Al-Dujaili, Y. Duan, O. AlShamma, J. Santamarı́a, M. A. Fadhel, M. Al-Amidie, and L. Farhan,
+“Review of deep learning: concepts, cnn architectures, challenges,
+applications, future directions,” Journal of big Data, vol. 8, pp. 1–74,
+2021.
+[8] L. Chua and T. Roska, “The cnn paradigm,” IEEE Transactions on
+Circuits and Systems I: Fundamental Theory and Applications, vol. 40,
+no. 3, pp. 147–156, 1993.
+[9] B. Lin, Z. Lin, Y. Guo, Y. Zhang, J. Zou, and S. Fan, “Variational
+probabilistic fusion network for rgb-t semantic segmentation,” 2023.
+[10] Y. Wang, G. Li, and Z. Liu, “Sgfnet: Semantic-guided fusion network
+for rgb-thermal semantic segmentation,” IEEE Transactions on Circuits
+and Systems for Video Technology, vol. 33, no. 12, pp. 7737–7748, 2023.
+[11] P. Shyam and H. Yoo, “Lightweight thermal super-resolution and object
+detection for robust perception in adverse weather conditions,” in 2024
+IEEE/CVF Winter Conference on Applications of Computer Vision
+(WACV), 2024, pp. 7456–7467.
+[12] R. Ippalapally, S. H. Mudumba, M. Adkay, and N. V. H. R., “Object
+detection using thermal imaging,” in 2020 IEEE 17th India Council
+International Conference (INDICON), 2020, pp. 1–6.
+[13] Y. Sun, W. Zuo, and M. Liu, “Rtfnet: Rgb-thermal fusion network for
+semantic segmentation of urban scenes,” IEEE Robotics and Automation
+Letters, vol. 4, no. 3, pp. 2576–2583, 2019.
+
+16
+
+[14] F. Deng, H. Feng, M. Liang, H. Wang, Y. Yang, Y. Gao, J. Chen,
+J. Hu, X. Guo, and T. L. Lam, “Feanet: Feature-enhanced attention
+network for rgb-thermal real-time semantic segmentation,” in 2021
+IEEE/RSJ international conference on intelligent robots and systems
+(IROS). IEEE, 2021, pp. 4467–4473.
+[15] Y. Sun, W. Zuo, P. Yun, H. Wang, and M. Liu, “Fuseseg: Semantic
+segmentation of urban scenes based on rgb and thermal data fusion,”
+IEEE Transactions on Automation Science and Engineering, vol. 18,
+no. 3, pp. 1000–1011, 2021.
+[16] W. Zhou, X. Lin, J. Lei, L. Yu, and J.-N. Hwang, “Mffenet: Multiscale
+feature fusion and enhancement network for rgb–thermal urban road
+scene parsing,” IEEE Transactions on Multimedia, vol. 24, pp. 2526–
+2538, 2022.
+[17] Q. Ha, K. Watanabe, T. Karasawa, Y. Ushiku, and T. Harada, “Mfnet:
+Towards real-time semantic segmentation for autonomous vehicles with
+multi-spectral scenes,” in 2017 IEEE/RSJ International Conference on
+Intelligent Robots and Systems (IROS), 2017, pp. 5108–5115.
+[18] Q. Zhang, S. Zhao, Y. Luo, D. Zhang, N. Huang, and J. Han, “Abmdrnet:
+Adaptive-weighted bi-directional modality difference reduction network
+for rgb-t semantic segmentation,” in 2021 IEEE/CVF Conference on
+Computer Vision and Pattern Recognition (CVPR), 2021, pp. 2633–
+2642.
+[19] W. Zhou, S. Dong, J. Lei, and L. Yu, “Mtanet: Multitask-aware network
+with hierarchical multimodal fusion for rgb-t urban scene understanding,” IEEE Transactions on Intelligent Vehicles, vol. 8, no. 1, pp. 48–58,
+2023.
+[20] J. Liu, W. Zhou, Y. Cui, L. Yu, and T. Luo, “Gcnet: Grid-like contextaware network for rgb-thermal semantic segmentation,” Neurocomputing, vol. 506, pp. 60–67, 2022.
+[21] W. Zhou, J. Liu, J. Lei, L. Yu, and J.-N. Hwang, “Gmnet: Gradedfeature multilabel-learning network for rgb-thermal urban scene semantic segmentation,” IEEE Transactions on Image Processing, vol. 30, pp.
+7790–7802, 2021.
+[22] G. Li, Y. Wang, Z. Liu, X. Zhang, and D. Zeng, “Rgb-t semantic segmentation with location, activation, and sharpening,” IEEE Transactions
+on Circuits and Systems for Video Technology, vol. 33, no. 3, pp. 1223–
+1235, 2023.
+[23] J. Liu, J. Lian, J. C. Sprott, Q. Liu, and Y. Ma, “The butterfly effect
+in primary visual cortex,” IEEE Transactions on Computers, vol. 71,
+no. 11, pp. 2803–2815, 2022.
+[24] M. Liang, J. Hu, C. Bao, H. Feng, F. Deng, and T. L. Lam, “Explicit attention-enhanced fusion for rgb-thermal perception tasks,” IEEE
+Robotics and Automation Letters, vol. 8, no. 7, pp. 4060–4067, 2023.
+[25] J. Long, E. Shelhamer, and T. Darrell, “Fully convolutional networks
+for semantic segmentation,” in Proceedings of the IEEE Conference on
+Computer Vision and Pattern Recognition (CVPR), June 2015.
+[26] O. Ronneberger, P. Fischer, and T. Brox, “U-net: Convolutional networks
+for biomedical image segmentation,” in Medical Image Computing and
+Computer-Assisted Intervention – MICCAI 2015, N. Navab, J. Hornegger, W. M. Wells, and A. F. Frangi, Eds. Cham: Springer International
+Publishing, 2015, pp. 234–241.
+[27] L.-C. Chen, G. Papandreou, I. Kokkinos, K. Murphy, and A. L. Yuille,
+“Deeplab: Semantic image segmentation with deep convolutional nets,
+atrous convolution, and fully connected crfs,” IEEE Transactions on
+Pattern Analysis and Machine Intelligence, vol. 40, no. 4, pp. 834–848,
+2018.
+[28] V. Badrinarayanan, A. Kendall, and R. Cipolla, “Segnet: A deep convolutional encoder-decoder architecture for image segmentation,” IEEE
+Transactions on Pattern Analysis and Machine Intelligence, vol. 39,
+no. 12, pp. 2481–2495, 2017.
+[29] H. Xiao, L. Li, Q. Liu, X. Zhu, and Q. Zhang, “Transformers in
+medical image segmentation: A review,” Biomedical Signal Processing
+and Control, vol. 84, p. 104791, 2023.
+[30] S. Khan, M. Naseer, M. Hayat, S. W. Zamir, F. S. Khan, and M. Shah,
+“Transformers in vision: A survey,” ACM Comput. Surv., vol. 54, no.
+10s, Sep. 2022.
+[31] Z. Liu, Y. Lin, Y. Cao, H. Hu, Y. Wei, Z. Zhang, S. Lin, and
+B. Guo, “Swin transformer: Hierarchical vision transformer using shifted
+windows,” in Proceedings of the IEEE/CVF International Conference on
+Computer Vision (ICCV), October 2021, pp. 10 012–10 022.
+[32] R. Strudel, R. Garcia, I. Laptev, and C. Schmid, “Segmenter: Transformer for semantic segmentation,” in Proceedings of the IEEE/CVF
+International Conference on Computer Vision (ICCV), October 2021,
+pp. 7262–7272.
+[33] E. Xie, W. Wang, Z. Yu, A. Anandkumar, J. M. Alvarez, and P. Luo,
+“Segformer: Simple and efficient design for semantic segmentation with
+transformers,” in Advances in Neural Information Processing Systems,
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+M. Ranzato, A. Beygelzimer, Y. Dauphin, P. Liang, and J. W. Vaughan,
+Eds., vol. 34. Curran Associates, Inc., 2021, pp. 12 077–12 090.
+[34] W. Liang, Y. Yang, F. Li, X. Long, and C. Shan, “Mask-guided
+modality difference reduction network for rgb-t semantic segmentation,”
+Neurocomputing, vol. 523, pp. 9–17, 2023.
+[35] Q. Wang, C. Yin, H. Song, T. Shen, and Y. Gu, “Utfnet: Uncertaintyguided trustworthy fusion network for rgb-thermal semantic segmentation,” IEEE Geoscience and Remote Sensing Letters, vol. 20, pp. 1–5,
+2023.
+[36] W. Zhou, S. Dong, M. Fang, and L. Yu, “Cacfnet: Cross-modal attention
+cascaded fusion network for rgb-t urban scene parsing,” IEEE Transactions on Intelligent Vehicles, vol. 9, no. 1, pp. 1919–1929, 2024.
+[37] W. Zhou, H. Zhang, W. Yan, and W. Lin, “Mmsmcnet: Modal memory
+sharing and morphological complementary networks for rgb-t urban
+scene semantic segmentation,” IEEE Transactions on Circuits and
+Systems for Video Technology, vol. 33, no. 12, pp. 7096–7108, 2023.
+[38] Y. Lv, Z. Liu, and G. Li, “Context-aware interaction network for rgb-t
+semantic segmentation,” IEEE Transactions on Multimedia, vol. 26, pp.
+6348–6360, 2024.
+[39] A. Kendall, Y. Gal, and R. Cipolla, “Multi-task learning using uncertainty to weigh losses for scene geometry and semantics,” in Proceedings
+of the IEEE Conference on Computer Vision and Pattern Recognition
+(CVPR), June 2018.
+[40] G. Li, L. Deng, H. Tang, G. Pan, Y. Tian, K. Roy, and W. Maass, “Braininspired computing: A systematic survey and future trends,” Proceedings
+of the IEEE, vol. 112, no. 6, pp. 544–584, 2024.
+[41] F. Liu, H. Zheng, S. Ma, W. Zhang, X. Liu, Y. Chua, L. Shi, and R. Zhao,
+“Advancing brain-inspired computing with hybrid neural networks,”
+National Science Review, vol. 11, 2024.
+[42] E. Hassan, M. Bettayeb, B. Mohammad, Y. Zweiri, and H. Saleh,
+“Hyperdimensional computing versus convolutional neural network:
+Architecture, performance analysis, and hardware complexity,” in 2023
+International Conference on Microelectronics (ICM), 2023, pp. 228–233.
+[43] J. Robertson, M. Hejda, J. Bueno, and A. Hurtado, “Ultrafast optical
+integration and pattern classification for neuromorphic photonics based
+on spiking vcsel neurons,” Scientific reports, vol. 10, no. 1, p. 6098,
+2020.
+[44] S. Kim, S. Park, B. Na, J. Kim, and S. Yoon, “Towards fast and
+accurate object detection in bio-inspired spiking neural networks through
+bayesian optimization,” IEEE Access, vol. 9, pp. 2633–2643, 2021.
+[45] Y. Kim, J. Chough, and P. Panda, “Beyond classification: Directly training spiking neural networks for semantic segmentation,” Neuromorphic
+Computing and Engineering, vol. 2, no. 4, p. 044015, 2022.
+[46] M. Yao, J. Hu, T. Hu, Y. Xu, Z. Zhou, Y. Tian, B. XU, and G. Li,
+“Spike-driven transformer v2: Meta spiking neural network architecture
+inspiring the design of next-generation neuromorphic chips,” in The
+Twelfth International Conference on Learning Representations, 2024.
+[47] C. Zhou, H. Zhang, Z. Zhou, L. Yu, L. Huang, X. Fan, L. Yuan, Z. Ma,
+H. Zhou, and Y. Tian, “QKFormer: Hierarchical spiking transformer
+using q-k attention,” in The Thirty-eighth Annual Conference on Neural
+Information Processing Systems, 2024.
+[48] Y. Li, X. He, Y. Dong, Q. Kong, and Y. Zeng, “Spike calibration: Fast
+and accurate conversion of spiking neural network for object detection
+and segmentation,” 2022.
+[49] T. Lindblad, J. M. Kinser, and J. Taylor, Image processing using pulsecoupled neural networks. Springer, 2005.
+[50] H. Liu, M. Liu, D. Li, W. Zheng, L. Yin, and R. Wang, “Recent advances
+in pulse-coupled neural networks with applications in image processing,”
+Electronics, vol. 11, no. 20, 2022.
+[51] Z. Yang, J. Lian, and J. Liu, “Infrared uav target detection based on
+continuous-coupled neural network,” Micromachines, vol. 14, no. 11,
+2023.
+[52] X. Zhang, L. Sun, X. Geng, H. Yue, X. Zhao, J. Lei, and J. Liu, “A
+novel image encryption scheme based on ccnn,” Physica Scripta, vol. 99,
+no. 2, p. 025253, jan 2024.
+[53] X. Zhang, J. Lian, Z. Yu, H. Tang, D. Liang, J. Liu, and J. K. Liu,
+“Revealing the mechanisms of semantic satiation with deep learning
+models,” Communications Biology, vol. 7, no. 1, p. 487, 2024.
+[54] J. Wang, J. Lian, M. Ma, J. Lei, C. Li, B. Li, and J. Liu, “Chaos in
+motion: Unveiling robustness in remote heart rate measurement through
+brain-inspired skin tracking,” 2024.
+[55] W. Maass, “Networks of spiking neurons: The third generation of neural
+network models,” Neural Networks, vol. 10, no. 9, pp. 1659–1671, 1997.
+[56] C. M. Liyanagedera, M. Nagaraj, W. Ponghiran, and K. Roy, “Lowpower real-time sequential processing with spiking neural networks,” in
+2023 IEEE International Symposium on Circuits and Systems (ISCAS),
+2023, pp. 1–5.
+
+17
+
+[57] G. Datta, Z. Liu, and P. A. Beerel, “Training ultra-low-latency spiking neural networks from scratch,” in ICASSP 2024 - 2024 IEEE
+International Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2024, pp. 13 046–13 050.
+[58] E. Xie, W. Wang, Z. Yu, A. Anandkumar, J. M. Alvarez, and P. Luo,
+“Segformer: Simple and efficient design for semantic segmentation
+with transformers,” Advances in neural information processing systems,
+vol. 34, pp. 12 077–12 090, 2021.
+[59] X. Jia, J. H. Siegle, S. Durand, G. Heller, T. K. Ramirez, C. Koch, and
+S. R. Olsen, “Multi-regional module-based signal transmission in mouse
+visual cortex,” Neuron, vol. 110, no. 9, pp. 1585–1598, 2022.
+[60] S. G. Knudstrup, C. Martinez, and J. P. Gavornik, “Learned response
+dynamics reflect stimulus timing and encode temporal expectation
+violations in superficial layers of mouse v1,” bioRxiv, 2024.
+[61] T. Sun, G. Zhang, W. Yang, J.-H. Xue, and G. Wang, “Trosd: A
+new rgb-d dataset for transparent and reflective object segmentation
+in practice,” IEEE Transactions on Circuits and Systems for Video
+Technology, vol. 33, no. 10, pp. 5721–5733, 2023.
+[62] S. S. Shivakumar, N. Rodrigues, A. Zhou, I. D. Miller, V. Kumar, and
+C. J. Taylor, “Pst900: Rgb-thermal calibration, dataset and segmentation
+network,” in 2020 IEEE international conference on robotics and
+automation (ICRA). IEEE, 2020, pp. 9441–9447.
+[63] J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and L. Fei-Fei, “Imagenet:
+A large-scale hierarchical image database,” in 2009 IEEE Conference on
+Computer Vision and Pattern Recognition, 2009, pp. 248–255.
+[64] J. He, Z. Deng, L. Zhou, Y. Wang, and Y. Qiao, “Adaptive pyramid
+context network for semantic segmentation,” in 2019 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2019, pp.
+7511–7520.
+[65] C. Yu, J. Wang, C. Peng, C. Gao, G. Yu, and N. Sang, “Learning a
+discriminative feature network for semantic segmentation,” in Proceedings of the IEEE conference on computer vision and pattern recognition,
+2018, pp. 1857–1866.
+[66] T. Pohlen, A. Hermans, M. Mathias, and B. Leibe, “Full-resolution
+residual networks for semantic segmentation in street scenes,” in 2017
+IEEE Conference on Computer Vision and Pattern Recognition (CVPR),
+2017, pp. 3309–3318.
+[67] C. Yu, J. Wang, C. Peng, C. Gao, G. Yu, and N. Sang, “Bisenet:
+Bilateral segmentation network for real-time semantic segmentation,” in
+Computer Vision – ECCV 2018, V. Ferrari, M. Hebert, C. Sminchisescu,
+and Y. Weiss, Eds. Cham: Springer International Publishing, 2018, pp.
+334–349.
+[68] C. Hazirbas, L. Ma, C. Domokos, and D. Cremers, “Fusenet: Incorporating depth into semantic segmentation via fusion-based cnn architecture,”
+in Computer Vision – ACCV 2016, S.-H. Lai, V. Lepetit, K. Nishino,
+and Y. Sato, Eds. Cham: Springer International Publishing, 2017, pp.
+213–228.
+[69] X. Lan, X. Gu, and X. Gu, “Mmnet: Multi-modal multi-stage network
+for rgb-t image semantic segmentation,” Applied Intelligence, vol. 52,
+no. 5, pp. 5817–5829, 2022.
+[70] O. Frigo, L. Martin-Gaffe, and C. Wacongne, “Doodlenet: Double
+deeplab enhanced feature fusion for thermal-color semantic segmentation,” in 2022 IEEE/CVF Conference on Computer Vision and Pattern
+Recognition Workshops (CVPRW), 2022, pp. 3020–3028.
+[71] B. Li, T. Wang, Y. Zhai, and J. Yuan, “Rfienet: Rgb-thermal feature
+interactive enhancement network for semantic segmentation of insulator
+in backlight scenes,” Measurement, vol. 205, p. 112177, 2022.
+[72] W. Zhou, Y. Lv, J. Lei, and L. Yu, “Embedded control gate fusion and
+attention residual learning for rgb–thermal urban scene parsing,” IEEE
+Transactions on Intelligent Transportation Systems, vol. 24, no. 5, pp.
+4794–4803, 2023.
+[73] C. Xu, Q. Li, X. Jiang, D. Yu, and Y. Zhou, “Dual-space graph-based
+interaction network for rgb-thermal semantic segmentation in electric
+power scene,” IEEE Transactions on Circuits and Systems for Video
+Technology, vol. 33, no. 4, pp. 1577–1592, 2023.
+[74] E. Romera, J. M. Álvarez, L. M. Bergasa, and R. Arroyo, “Erfnet: Efficient residual factorized convnet for real-time semantic segmentation,”
+IEEE Transactions on Intelligent Transportation Systems, vol. 19, no. 1,
+pp. 263–272, 2018.
+[75] X. Guo, W. Zhou, and T. Liu, “Contrastive learning-based knowledge distillation for rgb-thermal urban scene semantic segmentation,”
+Knowledge-Based Systems, vol. 292, p. 111588, 2024.
+[76] S. Zhao and Q. Zhang, “A feature divide-and-conquer network for rgb-t
+semantic segmentation,” IEEE Transactions on Circuits and Systems for
+Video Technology, vol. 33, no. 6, pp. 2892–2905, 2023.
+[77] M. Nelson and J. Rinzel, “The hodgkin-huxley model,” The book of
+genesis, vol. 2, 1995.
+
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021
+
+[78] W. Fang, Y. Chen, J. Ding, Z. Yu, T. Masquelier, D. Chen, L. Huang,
+H. Zhou, G. Li, and Y. Tian, “Spikingjelly: An open-source machine
+learning infrastructure platform for spike-based intelligence,” Science
+Advances, vol. 9, no. 40, p. eadi1480, 2023.
+[79] H. Li, Y. Zhang, Z. Xiong, and X. Sun, “Deep multi-threshold spikingunet for image processing,” Neurocomputing, vol. 586, p. 127653, 2024.
+
+Hanshuo Qiu born 2003 in Fuzhou, Fujian, China,
+is currently pursuing a B.S. degree at the School
+of Information Science and Engineering, Lanzhou
+University. His research mainly focuses on chaotic
+systems, image encryption, and deep learning.
+
+Jie Jiang is a professor at the Key Laboratory of Big
+Data and Decision Making, Department of Systems
+Engineering, National University of Defense Technology. His research interests include artificial intelligence and deep learning, visualization and visual
+analytics, virtual reality and intelligent interaction.
+
+Ruoli Yang is a passionate and dedicated individual
+currently pursuing her education at the National
+University of Defense Technology. With a strong inclination towards technology and a thirst for knowledge, she has chosen to focus her academic pursuits
+on the fields of deep learning, graphics, and image
+processing. She is driven by a desire to contribute to
+the development of advanced algorithms and techniques that can enhance the capabilities of artificial
+intelligence systems.
+
+Lixin Zhan obtained the M.S. degree in computer
+technology from Nanchang University, China, in
+2024. He is currently pursuing a Ph.D. degree at
+National University of Defense Technology, China.
+His research interests include 3D computer vision
+and deep learning.
+
+18
+
+Jizhao Liu born 1989 in Lanzhou, Gansu, China,
+received his B.S, M.S. and Ph.D. in Lanzhou University. He was a postdoctoral fellow at Sun Yat-sen
+University. He is an associate professor with School
+of Information Science and Engineering, Lanzhou
+University, China. His research has been primarily in
+the area of chaos theory, chaotic circuit, and related
+engineering applications. His current research interests include the nonlinear characteristic in biological
+neural network, neural coding, brain-like and braininspired computing.
+
+

@@ -1,0 +1,90 @@
+\section{Method}
+
+\subsection{Problem Formulation and Overview}
+
+Given an RGB image $I^{rgb}$, a thermal image $I^{thm}$, and a pixel-wise annotation map $Y$, the goal is to learn a mapping
+\begin{equation}
+\mathcal{F}:(I^{rgb}, I^{thm}) \mapsto \hat{Y},
+\end{equation}
+where $\hat{Y}$ denotes the semantic segmentation prediction. Our design targets two coupled difficulties in drone-view RGB-T segmentation: dynamic modality-quality variation and severe loss of small objects.
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=\textwidth]{\figoverview}
+    \caption{Overall architecture of \method{}. The framework adopts an asymmetric dual-encoder design, performs condition-aware cross-modal fusion at four scales, and decodes the fused features with a hierarchical small-object-aware decoder.}
+    \label{fig:overview}
+\end{figure*}
+
+As shown in Fig.~\ref{fig:overview}, the framework consists of four components: a frozen RGB backbone, a trainable thermal encoder, multi-scale CACAF fusion blocks, and the HGSOAD decoder. The RGB branch uses SAM2 Hiera-L as the main semantic prior source~\cite{ravi2025sam2}, while the thermal branch uses ConvNeXt-Tiny to maintain adaptability to low-light and degraded conditions~\cite{liu2022convnext}. Features from both branches are fused at four scales through CACAF and then decoded in a top-down manner by HGSOAD.
+
+\subsection{RGB and Thermal Encoders}
+
+We use SAM2 Hiera-L as the RGB backbone and freeze its original parameters, training only bottleneck adapters inserted before the Hiera blocks. This follows the adaptation strategy of ViT-Adapter and SAM-family adapters, where a strong pre-trained backbone is preserved and only a small trainable branch is introduced for downstream transfer~\cite{chen2023vitadapter,chen2023samadapter,chen2024sam2adapter}. For an input token $x$, the adapter output is
+\begin{equation}
+\mathrm{Adapter}(x)=W_2(\mathrm{GELU}(W_1x)).
+\end{equation}
+The transformed token fed into the original block becomes $x+\mathrm{Adapter}(x)$.
+
+The thermal branch uses a fully trainable ConvNeXt-Tiny encoder~\cite{liu2022convnext} to extract four-level multi-scale features. This yields an asymmetric multimodal design: the RGB stream provides strong foundation-model semantics, while the thermal stream remains flexible enough to absorb dataset- and condition-specific information.
+
+\subsection{CACAF}
+
+For RGB features $f_i^{rgb}$ and thermal features $f_i^{thm}$ at the $i$-th scale, CACAF performs four steps.
+\begin{enumerate}
+    \item \textbf{Channel alignment}
+    \begin{equation}
+    \hat{f}_i^{rgb}=\psi_i^{rgb}(f_i^{rgb}), \quad \hat{f}_i^{thm}=\psi_i^{thm}(f_i^{thm}).
+    \end{equation}
+
+    \item \textbf{Modal quality assessment}
+    \begin{align}
+    q_i^{rgb}&=\mathrm{MLP}(\mathrm{GAP}(\hat{f}_i^{rgb})), \\
+    q_i^{thm}&=\mathrm{MLP}(\mathrm{GAP}(\hat{f}_i^{thm})).
+    \end{align}
+    followed by
+    \begin{equation}
+    [w_i^{rgb}, w_i^{thm}] = \mathrm{softmax}([q_i^{rgb}, q_i^{thm}]).
+    \end{equation}
+
+    \item \textbf{Cross-modal enhancement} For the highest-resolution $f1$ level, we retain quality-aware weighting but omit cross-attention for efficiency. For $f2/f3/f4$, we apply bidirectional multi-head attention to exchange cross-modal information.
+
+    \item \textbf{Adaptive fusion}
+    \begin{equation}
+    f_i^{fused}=w_i^{rgb}\tilde{f}_i^{rgb}+w_i^{thm}\tilde{f}_i^{thm}.
+    \end{equation}
+\end{enumerate}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{\figcacaf}
+    \caption{Detailed design of CACAF. At each scale, modality features are aligned to a shared embedding space, weighted by modal quality assessment, enhanced by bidirectional cross-modal attention when affordable, and finally fused with adaptive weights.}
+    \label{fig:cacaf}
+\end{figure}
+
+Fig.~\ref{fig:cacaf} illustrates the internal flow of CACAF. Rather than simply concatenating or averaging modality features, CACAF first aligns them in a shared embedding space, then predicts quality-aware modality weights, and finally performs explicit cross-modal interaction when the token count is computationally manageable. This allows the model to respond to scene-dependent changes in modality reliability.
+
+\subsection{HGSOAD}
+
+HGSOAD adopts a U-Net-style top-down decoder. The fused features at four scales are first projected to a common decoding dimension through $1\times1$ convolutions, then progressively upsampled and merged through skip connections. At each scale, HGSOAD applies a Scale-Aware Gating Unit (SAGU) for lightweight channel gating:
+\begin{equation}
+g_i=\sigma\left(\phi(\mathrm{GAP}(x_i))+\phi(\mathrm{GMP}(x_i))\right),
+\end{equation}
+\begin{equation}
+\hat{x}_i = g_i \odot x_i,
+\end{equation}
+where $\phi$ denotes a $1\times1$ convolution, followed by ReLU and another $1\times1$ convolution. This gating mechanism improves the decoder's ability to preserve channels that are useful for fine structures and distant small targets.
+
+\subsection{Training Objective}
+
+We use a CE + Dice objective on the main head and auxiliary heads:
+\begin{equation}
+\mathcal{L}=\mathcal{L}_{main} + \lambda \left(\mathcal{L}_{aux2}+\mathcal{L}_{aux3}\right),
+\end{equation}
+where
+\begin{equation}
+\mathcal{L}_{main}=\mathcal{L}_{CE}(p,y)+\mathcal{L}_{Dice}(p,y),
+\end{equation}
+\begin{equation}
+\mathcal{L}_{auxk}=\mathcal{L}_{CE}(p_k^{aux},y)+\mathcal{L}_{Dice}(p_k^{aux},y), \quad k\in\{2,3\},
+\end{equation}
+and $\lambda=0.4$. As shown later in the experiments, combining Dice and OHEM is not beneficial in this architecture, so the final model is trained with CE + Dice.

@@ -1,0 +1,14 @@
+# Fdb version 4
+["xdvipdfmx"] 0 "out/conference_draft.xdv" "out/conference_draft.pdf" "out/conference_draft" 0 -1
+  "out/conference_draft.xdv" 0 -1 0 "xelatex"
+  (generated)
+  "out/conference_draft.pdf"
+  (rewritten before read)
+["xelatex"] 1773903459.19509 "/home/jl/Drone-SAM-Adapter/docs/conference_draft.tex" "out/conference_draft.xdv" "conference_draft" 1773903459.28973 2
+  "/home/jl/Drone-SAM-Adapter/docs/conference_draft.tex" 1773903459.04271 19591 316c1692b29d49c5d12211fa5f44c1fa ""
+  "out/conference_draft.aux" 1773903451.19072 32 3985256e7290058c681f74d7a3565a19 "xelatex"
+  (generated)
+  "out/conference_draft.aux"
+  "out/conference_draft.log"
+  "out/conference_draft.xdv"
+  (rewritten before read)

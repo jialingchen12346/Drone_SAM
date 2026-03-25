@@ -1,0 +1,1212 @@
+Unveiling the Potential of Segment Anything Model 2 for RGB-Thermal
+Semantic Segmentation with Language Guidance
+
+I. I NTRODUCTION
+The effective and safe operation of autonomous robotic
+systems relies on accurate pixel-wise classification tasks [1],
+[2], [3], mainly when the precise identification of specific categories directly influences the system’s functionality
+and decision-making in complex environments. Prior works
+have achieved accurate perception performance in the RGB
+modality through sophisticated network designs. Furthermore, to address the limitations of RGB cameras, which
+make them susceptible to variations in illumination, some
+researchers [4], [5] have introduced the thermal modality
+to compensate for the deficiencies of RGB images in lowlight conditions. However, as robotic applications continue
+This work was supported in part by the National Natural Science
+Foundation of China (Grant No. 62473139), in part by the Hunan Provincial
+Research and Development Project (Grant No. 2025QK3019), and in part
+by the Open Research Project of the State Key Laboratory of Industrial
+Control Technology, China (Grant No. ICT2025B20).
+1 The authors are with the School of Artificial Intelligence and Robotics,
+Hunan University, China.
+2 The authors are also with the National Engineering Research Center of
+Robot Visual Perception and Control Technology, Hunan University, China.
+3 The author is with the AI Thrust, Hong Kong University of Science and
+Technology (Guangzhou), China.
+∗ Equal contribution.
+† Corresponding authors: Kailun Yang and Xu Zheng (email:
+kailun.yang@hnu.edu.cn, zhengxu128@gmail.com).
+
+Image
+Encoder
+Image, Thermal…
+
+Decoder
+
+Fusion
+
+Decoder
+
+(a)
+Image
+Encoder
+
+Image, Thermal…
+
+Text
+
+Fusion
+
+VLM Text
+Encoder
+
+Guide
+
+Abstract— The perception capability of robotic systems relies
+on the richness of the dataset. Although Segment Anything
+Model 2 (SAM2), trained on large datasets, demonstrates strong
+perception potential in perception tasks, its inherent training
+paradigm prevents it from being suitable for RGB-T tasks. To
+address these challenges, we propose SHIFNet, a novel SAM2driven Hybrid Interaction Paradigm that unlocks the potential
+of SAM2 with linguistic guidance for efficient RGB-Thermal
+perception. Our framework consists of two key components: (1)
+Semantic-Aware Cross-modal Fusion (SACF) module that dynamically balances modality contributions through text-guided
+affinity learning, overcoming SAM2’s inherent RGB bias; (2)
+Heterogeneous Prompting Decoder (HPD) that enhances global
+semantic information through a semantic enhancement module
+and then combined with category embeddings to amplify crossmodal semantic consistency. With 32.27M trainable parameters, SHIFNet achieves state-of-the-art segmentation performance on public benchmarks, reaching 89.8% on PST900 and
+67.8% on FMB, respectively. The framework facilitates the
+adaptation of pre-trained large models to RGB-T segmentation
+tasks, effectively mitigating the high costs associated with data
+collection while endowing robotic systems with comprehensive
+perception capabilities. The source code will be made publicly
+available at https://github.com/iAsakiT3T/SHIFNet.
+
+Guide
+
+arXiv:2503.02581v2 [cs.CV] 22 Jul 2025
+
+Jiayi Zhao1,2,∗ , Fei Teng1,2,∗ , Kai Luo1,2 , Guoqiang Zhao1,2 , Zhiyong Li1,2 , Xu Zheng3,† , and Kailun Yang1,2,†
+
+(b)
+
+Fig. 1: Architecture comparison: (a) Current framework.
+(b) our SHIFNet integrating pre-trained language-guided
+RGB-T fusion and semantic hierarchy-aware decoder to
+enable knowledge transfer from vision-language models
+to expand across diverse environments, the demand for
+models with strong generalization capabilities to process
+heterogeneous and previously unseen data has become increasingly critical. This presents two key challenges for
+RGB-T perception tasks. 1) Enhancing network performance
+requires large-scale data collection, which incurs significant
+labor costs. 2) Fully fine-tuning models on extensive datasets
+imposes substantial computational demands. Achieving a
+win-win solution that balances network efficiency and costeffectiveness remains an urgent problem to be addressed.
+Fortunately, recent advancements in foundation models have
+proposed a promising solution to this challenge.
+Segment Anything in Images and Videos (SAM2) [6],
+[7], by leveraging large-scale pre-training on web-scale
+datasets, demonstrates remarkable generalization across diverse segmentation tasks. If SAM2 can be leveraged for
+RGB-T perception tasks, it would significantly reduce dependency on task-specific data collection while circumventing computationally prohibitive training procedures [8], [9],
+[10]. However, research works [11], [12] indicate that the
+direct application of SAM2 to multi-modal segmentation
+yields suboptimal results. This stems from the pre-training
+paradigm of SAM2, as it is trained on visible images.
+Directly applying it to multi-modal segmentation tasks overlooks modality-oriented characteristics. Furthermore, despite
+its strong image encoding capabilities, the fused modalities
+exhibit feature misalignment, which hinders multi-modal
+semantic understanding. To overcome these challenges, we
+introduce a novel framework, as shown in Fig. 1, termed the
+SAM2-driven Hybrid Interactive Fusion Paradigm (SHIF).
+To fully harness SAM2’s segmentation potential for RGBT tasks, SHIF focuses on two aspects: Homogeneous feature
+
+fusion, Heterogeneous Information Matching. 1) Current
+feature fusion [13], [14] methods focus on integrating or selecting [15], [16] features through joint training approaches.
+They heavily rely on the fine-tuning of network parameters
+specific to certain datasets, leading to prolonged training
+durations, constraining the network’s ability, and lacking the
+potential of the SAM2 model. Although some studies [8],
+[17] have introduced adapter-based paradigms based on
+the SAM series module, they often overlook the inherent
+modality preferences of SAM pre-trained paradigm, thereby
+hindering effective information complementation across different modalities. To address this issue, we designed a
+Semantic-Aware Cross-modal Fusion (SACF) module. SACF
+leverages the text-image coupling relationships learned by
+vision-language models [18] through contrastive learning on
+large-scale datasets and utilizes textual information to dynamically adjust the feature priorities among different visual
+representations encoded by SAM2. It identifies the dominant
+features and enables dynamically joint visual-textual affinity
+learning. 2) Although SAM2 exhibits powerful mask generation capabilities, it relies heavily on geometric information
+(such as shape and boundaries) [7], [19]. This bias leads
+to feature ambiguities in cross-modal semantic understanding and global contextual reasoning, particularly in multimodal fusion scenarios. To address this issue, we propose a
+Heterogeneous Prompting Decoder (HPD) with only 3.5M
+parameters. HPD integrates a Semantic Enhancement Module to achieve global semantic information alignment. Then,
+it leverages category embeddings from a large language
+model [18] to restructure inter-class relationships, ultimately
+generating a globally consistent semantic map.
+In this paper, we unveil the untapped potential of SAM2
+for RGB-Thermal semantic segmentation through languageguided multi-modal adaptation. Extensive evaluations on
+RGB-T benchmarks (i.e., PST900 [5], FMB [20], and
+MFNet [4]) verify our framework’s superiority. Leveraging
+SAM2’s exceptional segmentation capability, our method
+ensures comprehensive category-wise segmentation with preserved structural integrity and minimal fragmentation. Even
+in partial observation scenarios, SAM2’s robust foundation
+maintains complete object delineation, eliminating discontinuities or incomplete contours.
+The contributions of this work are summarized as follows:
+• To meet the perception requirements of intelligent
+robots across diverse scenarios, we propose the Hybrid
+Interaction SAM2 paradigm (SHIFNet). SHIFNet unlocks the potential of the SAM2 by addressing modality
+preferences through language guidance.
+• We propose SACF and HPD. SACF dynamically adjusts
+fusion weights using language embeddings and mitigates modality bias through text-guided feature recalibration. With only 3.5M parameters, HPD incorporates
+global semantic information and utilizes language guidance to enable physics-aware feature reassignment.
+• SHIFNet achieves outstanding performance with 89.8%
+mIoU on PST900 [5], 67.8% on FMB [20], and 59.2%
+on MFNet in extreme conditions, demonstrating su-
+
+perior safety-critical perception with 76.5% pedestrian
+detection accuracy.
+II. R ELATED W ORK
+A. RGB-T Semantic Segmentation
+RGB-T semantic segmentation leverages both RGB and
+thermal images to improve performance in challenging conditions such as low light or fog [4], [21]. Early methods relied
+on simple fusion techniques, like concatenating RGB and
+thermal features, but struggled with modality misalignment
+and noise. Recent approaches, including multi-stream networks [22], [23] and multi-scale fusion [24], [25], have better
+captured the complementary nature of RGB and thermal
+data, enabling more effective feature fusion. Transformerbased models [22], in particular, have been successful in
+capturing long-range dependencies and enhancing crossmodal interactions. Integrating foundation models presents
+a promising win-win solution for RGB-T perception tasks.
+By leveraging the powerful encoding capabilities of large
+models, we can mitigate the high cost of data collection in
+multi-modal perception and reduce the computational burden
+of network tuning. However, due to their inherent training
+paradigm, large models exhibit a preference for RGB images.
+B. Segment Anything (SAM) Family
+The Segment Anything Model (SAM) [6] has redefined
+segmentation through its promptable architecture, trained
+on 11M images and 1.1B masks, achieving unprecedented
+perception capability. While SAM excels in RGB-centric
+tasks, its inability to process multi-modal inputs (e.g., depth,
+thermal) limits robotic applications. Recent extensions like
+SAM2 [7] introduced temporal memory mechanisms for
+video segmentation, and MM-SAM [26] enabled multimodal processing via LoRA-based adaptation. Efforts are
+now increasing to explore SAM2’s potential in broader
+domains, including medical imaging [11], multi-modal segmentation [26], and open-vocabulary dense prediction [27].
+However, despite these advancements, SAM2’s potential in
+the RGB-Thermal (RGB-T) domain remains underexplored.
+SAM2 and other variants are primarily optimized for visible
+light images, and as a result, they struggle with the unique
+challenges presented by the thermal modality, such as differences in feature representations and sensor characteristics.
+This leaves a significant gap in performance for applications
+like thermal-aware segmentation, where the fusion of RGB
+and thermal data is crucial for accuracy, especially in lowvisibility environments.
+C. Concept-aware Recognition
+Concept-aware networks aim to bridge the gap between
+visual features and linguistic context, showing great potential
+in the field of vision-language models. Early works [28]
+leveraged text supervision to fine-tune pre-trained visual
+encoders for downstream tasks such as VQA [29] and Image
+Captioning [30]. With breakthroughs in foundational models,
+models like CLIP [31] and Languagebind [18] have become
+
+Adapter
+
+Conv
+1×1
+
+MLP
+
+Layer Norm
+
+Adapter
+
+Multi-head
+Attention
+
+Layer Norm
+
+Conv
+1×1
+
+A
+
+Input
+
+Conv
+1×1
+
+Conv
+1×7
+
+Conv
+7×1
+
+Conv
+1×7
+Conv
+7×1
+
+Conv
+1×7
+
+Conv
+7×1
+
+MLP
+
+Concat
+
+SACF
+
+𝑓R𝑖 /𝑓T𝑖
+
+Fuse
+
+SACF
+
+Unsample
+
+SEM
+
+SACF
+
+FPNneck
+
+…×𝒏
+
+SACF
+
+Transformer Block 𝐿s
+
+Transformer Block 𝐿1
+
+Embedding
+
+C
+
+Heterogeneous Prompting
+Decoder
+C Concatenate
+
+{𝐶𝑎𝑟, 𝑃𝑒𝑟𝑠𝑜𝑛, 𝐵𝑖𝑘𝑒,
+𝐶𝑖𝑟𝑣𝑒, 𝐺𝑢𝑎𝑟𝑑𝑟𝑎𝑖𝑙 … }
+
+A Average Pooling
+Inner Product
+
+Languagebind Text Encoder
+
+Element-wise
+Add
+
+Fig. 2: Architecture of SAM2-driven Hybrid Interactive Fusion (SHIF) paradigm. The framework features: (1) Dual-stream
+SAM2 encoder with adapters for preserving spectral characteristics, (2) Multi-level Semantic-Aware Cross-modal Fusion
+(SACF) module, and (3) Heterogeneous Prompting Decoder (HPD) that aligns visual features with semantic embeddings,
+enabling physics-aware segmentation.
+excellent starting points for downstream tasks by pre-training
+on large-scale noisy image-text pairs.
+However, the potential of concept-aware networks has not
+been fully explored in multi-modal semantic segmentation
+tasks. Existing methods mostly focus on the direct interaction
+between visual features and text representations [32], [33].
+While they have made initial progress, they have not effectively leveraged text concepts to guide fine-grained spatial
+understanding. In our work, we propose a Heterogeneous
+Prompting Decoder (HPD) that enables a deep fusion of
+linguistic context and visual features, addressing the reassignment of fused features encoded by SAM2, unlocking the
+potential of SAM2 for RGB-T segmentation tasks.
+III. M ETHODOLOGY
+A. Overall Architecture
+The proposed framework, illustrated in Fig. 2, is a novel
+approach that seamlessly integrates multi-modal inputs to
+achieve robust and efficient semantic segmentation. The
+core innovation of our approach lies in leveraging linguistic
+prompts to guide SAM’s feature extraction capabilities for
+multi-modal fusion and driven decoding, unlocking its full
+representational power for precise RGB-T segmentation.
+We utilize the SAM2 image encoder for feature extraction
+across different modalities and share weights. This shared
+architecture allows the model to leverage the complementary
+strengths of each modality and learn meaningful representations without the need for separate feature extractors for
+each modality. The input flow is formally defined by the
+
+following:
+Xinput = [XR , XT ].
+
+(1)
+
+Firstly, the RGB and thermal inputs are concatenated and
+jointly fed into the encoder to obtain the respective features:
+FR , FT = SAM2(Xinput ).
+FR ={fRi }(i=1, 2, 3, 4)
+
+(2)
+
+FT ={fTi }(i=1, 2, 3, 4)
+
+Here,
+and
+represent the extracted four-level pyramid features from the
+RGB and thermal modalities, respectively. These multi-level
+features are then fused through the integration of corresponding pyramid-level features from both modalities:
+F i = SACF i (fRi , fTi ).
+
+(3)
+
+i
+
+After that, the fused features F =F (i=1, 2, 3, 4), along with
+category embeddings Ecls are fed into the decoder for
+semantic segmentation. This end-to-end flow is designed
+to extract both low-level spatial information and high-level
+semantic context. Therefore, the fused features pass through
+a context module to capture global semantic information,
+which is then combined with the original fused features to
+produce enriched representations. These enriched features,
+together with category embeddings, are then used by the
+decoder to generate the final segmentation map:
+Segmap = HP D(F i , Ecls ).
+
+(4)
+
+This architecture utilizes both spatial and semantic features,
+which are critical for high-quality segmentation and ensures
+that both visual features and linguistic context are effectively
+integrated.
+
+B. Segment Anything Model (SAM2)
+
+Weight
+
+(5)
+
+fˆT = Pt(fTi ) ∈ RB×HW ×D ,
+
+(6)
+
+where Pr and Pt are modality-specific projection layers
+that map features into a shared semantic space (D=768)
+compatible with language embeddings. After that, the crossmodal attention weights are obtained using condensed text
+representations. First, we average pool the N -class text embeddings Ecls ∈ RN ×D to obtain global semantic guidance:
+N
+
+Ēcls =
+
+1 X
+Ecls ∈ R1×D .
+N n=1
+
+(7)
+
+Softmax
+
+FTi
+
+MLP
+
+fˆR = Pr(fRi ) ∈ RB×HW ×D ,
+
+DWconv
+
+To achieve fine-grained interaction between multi-modal
+features and semantic priors, we propose a Semantic-Aware
+Cross-modal Fusion (SACF) module that dynamically adjusts
+fusion weights through joint visual-textual affinity learning.
+As depicted in Fig. 3, this hierarchical architecture operates
+across four pyramid levels, enabling progressive refinement
+of complementary multi-modal information.
+Given aligned RGB and thermal features {fRi , fTi } ∈
+B×C×H×W
+R
+at level i, we first establish cross-modal semantic correlations through dual-branch projection. Specifically, both modalities undergo nonlinear transformation via
+parallel MLPs to align their representations with linguistic
+embeddings:
+
+A
+
+B ×1×H ×W
+
+𝐶𝑙𝑠 𝐸𝑚𝑏𝑒𝑑𝑑𝑖𝑛𝑔
+
+MLP
+
+C. Semantic-Aware Cross-modal Fusion Module
+
+FRi
+
+MLP
+
+To ensure the model’s scene understanding ability across
+various scenarios and to avoid the labor-intensive process
+of multi-modal data collection and calibration, we introduce
+SAM2 as the feature encoder. Structurally, we extend the
+original SAM2 image encoder, which was designed to process single RGB inputs, by enabling it to handle multiple
+modalities through shared weights. Additionally, we finetune SAM2’s image encoder following the method proposed
+by Wu [11]. This approach allows the model to process
+diverse inputs while maintaining a unified architecture.
+SAM2 incorporates Hiera [34] as the backbone network
+and introduces FpnNeck [35] as the Feature Pyramid Network (FPN), including Tiny, Small, Base, and Large. In this
+study, the large scale is utilized.
+
+B ×1×H ×W
+
+Weight
+
+Fig. 3: Illustration of the SACF module. The hierarchical
+architecture aligns RGB and thermal features via dualbranch MLP projection. Fused features are progressively
+refined via gated aggregation and cascaded CXBlocks across
+four pyramid levels to enhance complementary multi-modal
+interactions.
+The fused feature F i at level i is then computed through
+gated aggregation and progressive refinement:
+!
+K
+X
+
+i
+i
+i
+F = Γout
+Ck G(WR ⊙ fR + WT ⊙ fT ) , (10)
+k=1
+
+where G(·) denotes feature concatenation, Ck represents a
+series of CXBlocks [36], and Γout is the output projection
+layer.
+D. Heterogeneous Prompting Decoder
+To bridge the gap between visual features and linguistic
+context, the Heterogeneous Prompting Decoder (HPD) is
+designed to facilitate the guided generation of semantic segmentation maps based on textual descriptions. This module
+integrates category embeddings derived from a language
+model, leveraging the semantic guidance to adjust feature
+representations and improve segmentation accuracy. As illustrated in Fig. 2, the HPD operates in three key stages:
+1. Category Embedding. The language model encodes
+semantic categories into dense vectors Ecls , where each class
+label is transformed into a high-dimensional embedding. This
+embedding serves as a prior for class-wise feature learning
+in the decoder:
+Ecls = LLB (cls).
+(11)
+
+The final fusion weights are obtained by adaptive recalibration:
+
+In this context, LLB indicates text encoder from LanguageBind [18]. The obtain class embeddings is Ecls ∈ RN ×D ,
+where N is the number of categories, and cls represents the
+semantic categories, for example car, person, bike, etc.
+By integrating textual context into the segmentation process, the model focuses on the most relevant features for each
+class, leading to more precise segmentation boundaries.
+2. Enhanced stage. To distill the global semantic context,
+a Semantic Enhancement Module (SEM) is employed as
+shown in Fig. 2. Fused features are first subjected to a
+global average pooling operation, followed by a 1×1 convolution. This process stabilizes the feature distributions and
+suppresses irrelevant background information.
+
+WR , WT = Sof tmax(Cat(AR , AT )) ∈ RB×2×H×W . (9)
+
+Favg = Conv1×1 (Avg(F i )),
+
+To address the dynamic variation of modality reliability
+across spatial regions under changing scenarios (e.g., RGB
+dominance in well-lit areas versus thermal superiority in
+low-light conditions), our fusion weights derived from textguided semantic correlations adaptively allocate modality importance at each position. We compute fˆR and fˆT positionwise relevance scores through normalized inner products:
+AR =
+
+fˆR · Ēcls⊤
+,
+|fˆR ||Ēcls|
+
+AT =
+
+fˆT · Ēcls⊤
+.
+|fˆT ||Ēcls|
+
+(8)
+
+(12)
+
+TABLE I: Overview of dataset splits and image resolutions for PST900, FMB and MFNet.
+Dataset
+
+Train
+
+Val
+
+Size
+
+Classes
+
+PST900 [5]
+FMB [20]
+MFNet [4]
+
+597
+1220
+1568
+
+288
+280
+393
+
+(1280, 720)
+(1024, 1024)
+(640, 480)
+
+5
+14
+9
+
+TABLE II: RGB-Thermal semantic segmentation performance on the PST900 dataset.
+
+Fig. 4: Grad-CAM visualizations on the FMB dataset for
+critical safety categories: Car, Bus, Person, and Traffic Light,
+highlighting the regions focused on by the model.
+where Favg represents the features obtained from the enhanced stages. Conv is the abbreviation for the convolutional
+layer and AV G denotes average pooling. The enhanced
+features are then processed through three parallel branches,
+each designed to capture different aspects of the spatial and
+semantic patterns. These branches focus on lightweight compression, directional modeling, and hierarchical refinement,
+respectively:
+Fb1 = Conv1×1 (Favg ),
+(13)
+Fb2 = Conv7×1 (Conv1×7 (Conv1×1 (Favg ))),
+
+(14)
+
+Fb3 = Block2 (Block1 (Conv1×1 (Favg )),
+
+(15)
+
+Blocki = Conv7×1 (Conv1×7 ())(i = 1, 2)),
+
+(16)
+
+where {Fb1 , Fb2 , Fb3 } indicates three different branches.
+The outputs from different branches are fused via elementwise summation, enhancing salient features while preserving spatial coherence. Two 3×3 convolutions (dim from
+64→8→256) restore high-frequency details and semantic
+richness, followed by skip-connected concatenation with
+original pyramid features at corresponding scales and an
+MLP for dynamic channel recalibration.
+Fb = Fb1 + Fb2 + Fb3 ,
+
+(17)
+
+Ff inally = Conv1×1 (U p(Concat(F, Fb ))).
+
+(18)
+
+Hierarchical features are then aligned via bilinear upsampling
+and concatenated into a 1024-dimensional representation.
+A parametric 1×1 convolution projects this high-cardinality
+tensor to D, the same as the classification embedding dim.
+3. Semantic map. Building upon the word-pixel correlation tensor framework (Li et al. [37]), the final stage
+involves generating a high-resolution semantic activation
+map (Ff inally ∈ RĤ×Ŵ ×D ) through joint optimization of
+visual-textual embeddings. For each spatial position (i, j),
+we calculate its similarity to class embeddings via inner
+product:
+(i,j)
+T
+Sij = Ff inally · Ecls
+∈ RN ,
+(19)
+where Sij represents the semantic affinity scores between the
+pixel embedding and all classes. This objective maximizes
+
+Method
+
+Modalities
+
+mIoU (%) ↑
+
+UNet [38]
+MFNet [4]
+PSTNet [5]
+CACFNet [39]
+DPLNet [40]
+MMSFormer [22]
+CRM_RGBTSeg [41]
+HAPNet [25]
+SHIFNet (Ours)
+
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+
+52.8
+57.0
+68.4
+86.6
+86.7
+87.5
+88.0
+89.0
+89.8
+
+the similarity between pixels and their target class embeddings while suppressing irrelevant class correlations, yielding
+a high-resolution semantic activation map A ∈ RH×W ×C .
+IV. E XPERIMENTS
+A. Datasets
+Our experiments utilize two multi-modal benchmarks with
+complementary characteristics:
+a) PST900: PST900 [5] is from the DARPA Subterranean Challenge and consists of 894 pairs of RGB-T
+images with a resolution of 1280×720. The dataset provides
+annotated segmentation labels for 1 background class and 4
+foreground classes.
+b) FMB: FMB [20] captures scenes under a variety
+of lighting conditions and consists of 1500 pairs of RGB-T
+images with a resolution of 800×600. It provides annotations
+for 14 foreground classes and 1 background class.
+c) MFNet: MFNet [4] is an urban driving scene parsing
+dataset, containing 1569 images (820 taken at daytime and
+749 taken at nighttime). Eight classes of obstacles commonly
+encountered during driving are labeled in this dataset.
+d) Metrics and Split: We use mean Accuracy (mAcc)
+and mean Intersection over Union (mIoU) as the evaluation
+metrics for our model. We evaluate 14 classes for FMB, 5
+classes for PST900 and 9 classes for MFNet, with dataset
+splits as shown in Table I.
+B. Implementation Details
+All experiments are conducted on two NVIDIA A6000
+GPUs using PyTorch 2.1, with mixed-precision training and
+gradient checkpointing. We set a batch size of 4 (2 per GPU)
+for the FMB, 8 (4 per GPU) for the MFNet and 4 (2 per
+GPU) for PST900, training for 150 epochs with the AdamW
+optimizer (β1 =0.999) and a base learning rate of 1×10−4 .
+C. Results
+1) PST900: The experimental results on the PST900
+underground dataset, as shown in Table II, demonstrate the
+
+TABLE III: RGB-Thermal semantic segmentation performance on the FMB dataset.
+Method
+
+Modalities
+
+mIoU (%) ↑
+
+GMNet [42]
+LASNet [43]
+DIDFuse [44]
+ReCoNet [45]
+U2Fusion [46]
+SegMiF [20]
+U3M [47]
+MMSFormer [22]
+SHIFNet (Ours)
+
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+
+49.2
+42.5
+50.6
+50.9
+47.9
+54.8
+60.8
+61.7
+67.8
+
+TABLE IV: RGB-Thermal semantic segmentation performance on the MFNet dataset.
+
+TABLE V: Ablation of SHIFNet on the PST900 dataset.
+Method
+
+SACF
+
+HPD
+
+mIoU (%)
+
+mACC (%)
+
+1
+2
+3
+4
+
+✗
+✓
+✗
+✓
+
+✗
+✗
+✓
+✓
+
+88.7
+88.8
+89.5
+89.8
+
+94.2
+93.7
+93.3
+94.1
+
+TABLE VI: Ablation studies for different fusion methods.
+Method
+
+Fusion method
+
+PST900
+
+FMB
+
+1
+2
+3
+4
+
+Add
+Concat
+SACF w/o text guide
+SACF
+
+89.4
+89.5
+88.9
+89.8
+
+65.5
+66.6
+67.1
+67.8
+
+TABLE VII: Ablation studies for different decoders.
+
+Method
+
+Modalities
+
+mIoU (%) ↑
+
+Method
+
+PST900
+
+FMB
+
+MFNet [4]
+PSPNet [48]
+PST900 [5]
+SegFormer [2]
+LASNet [43]
+SegMiF [20]
+CMNext[13]
+CRM_RGBTSeg [41]
+SHIFNet (Ours)
+
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+
+39.7
+46.1
+48.4
+54.8
+54.9
+56.1
+59.9
+61.4
+59.2
+
+All-MLP [2]
+PPM [48]
+HPD (Ours)
+
+89.1
+85.8
+89.8
+
+66.1
+62.4
+67.8
+
+exceptional capability of our framework in the safety-critical
+perception of subterranean environments. Achieving a stateof-the-art mIoU of 89.8%, our method outperforms HAPNet [25] by 0.8% absolute improvement, with particularly
+remarkable gains in life-critical categories.
+2) FMB: The experimental results on the FMB dataset,
+as summarized in Table III, demonstrate our framework’s
+exceptional robustness under extreme environmental conditions. Achieving a state-of-the-art mIoU of 67.8%, our
+method outperforms MMSFormer and U3M by 6.1% and
+7.0% respectively, with notable improvements in safetycritical categories, as shown in Table IX. SHIFNet consistently surpasses existing methods across all classes. This
+performance gain can be attributed to SHIFNet’s effective
+modality fusion and feature extraction strategies, which enhance accuracy across diverse scenarios.
+3) MFNet: Table IV presents the RGB-Thermal semantic
+segmentation performance on the MFNet dataset. The results
+show that SHIFNet performs well, achieving an mIoU of
+59.2%, which is slightly lower than CRM_RGBTSeg and
+CMXNext, but still outperforms several other methods.
+D. Efficiency Analysis
+On the FMB dataset with 480×640 input, our model
+achieves an average inference time of 123 ms per image on
+a single NVIDIA RTX A6000 GPU, with a computational
+cost of 626 GFLOPs.
+E. Ablation Study
+Ablation on Key Components of SHIFNet. Table V
+presents the ablation study of SACF and HPD modules
+on PST900. Replacing SACF with direct addition and substituting HPD with SegFormer head significantly degrades
+performance. Method 2 (SACF only) achieves 88.8% mIoU
+
+TABLE VIII: Ablation studies for SEM in HPD.
+Method
+
+PST900
+
+HPD w/o SEM
+HPD (Ours)
+
+56.6
+89.8
+
+and 93.7% mACC, while Method 3 (HPD only) yields 89.5%
+mIoU and 93.3% mACC, demonstrating HPD’s contribution
+to segmentation accuracy. Method 4 (SACF + HPD) achieves
+optimal performance with 89.8% mIoU and 94.1% mACC.
+The results validate the synergistic effectiveness of SACF
+in dynamic RGB-T fusion weight adjustment and HPD in
+physics-aware feature reassignment through language guidance.
+Ablation on SACF. To validate SACF’s efficacy, we systematically ablate its core components against two baseline
+fusion schemes: 1) Add: Direct element-wise summation
+without semantic alignment; 2) Concat: Channel-wise concatenation followed by 1×1 convolution. As indicated in
+Table VI, SACF outperforms Add and Concat by 0.4%
+and 0.3% mIoU on PST900, respectively, demonstrating
+its capacity to mitigate modality-specific noise. Crucially,
+removing the category-guided dynamic weighting causes
+0.7% mIoU degradation on the FMB dataset, highlighting
+the necessity of our module.
+Ablation on HPD. Table VII presents experimental results
+comparing different decoders. We performed comparisons
+with the All-MLP decoder from SegFormer [2] and PPM
+from PSPNet [48]. The PPM decoder, which generates multiscale feature maps from the final layer’s features rather than
+utilizing multi-scale features from the backbone, demonstrates poor performance. While SegFormer’s All-MLP decoder achieves competitive accuracy (89.1% in mIoU), it
+trails our HPD by 0.7% mIoU on PST900 and 1.7% mIoU on
+the FMB dataset. This highlights the superior performance
+of HPD in effectively utilizing multi-scale features and
+enhancing segmentation accuracy.
+We also validate the effectiveness of the SEM module. As
+shown in Table VIII, the performance drops significantly on
+the PST900 dataset when SEM is excluded, underscoring the
+
+RGB
+Thermal
+Label
+U3M
+Ours
+
+Fig. 5: Day-night segmentation comparison on the FMB dataset: Our method v.s. U3M. Critical improvements are shown
+in low-light conditions with complete pedestrian silhouettes and traffic light recognition while maintaining superior daytime
+performance through cross-modal RGB-T fusion guided by language priors.
+TABLE IX: Per-class semantic segmentation accuracy in mIoU on the FMB dataset [20].
+Methods
+GMNet [42]
+LASNet [43]
+DIDFuse [44]
+ReCoNet [45]
+U2Fusion [46]
+SegMiF [20]
+U3M [47]
+MMSFormer [22]
+SHIFNet (Ours)
+
+Modalities
+
+Car
+
+Person
+
+Truck
+
+T-Lamp
+
+T-Sign
+
+Building
+
+Vegetation
+
+Pole
+
+mIoU (%)
+
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+RGB-Thermal
+
+79.3
+72.6
+77.7
+75.9
+76.6
+78.3
+82.3
+82.6
+86.3
+
+60.1
+48.6
+64.4
+65.8
+61.9
+65.4
+66.0
+69.8
+76.5
+
+22.2
+14.8
+28.8
+14.9
+14.4
+47.3
+41.9
+44.6
+56.1
+
+21.6
+2.9
+29.2
+34.7
+28.3
+43.1
+46.2
+45.2
+47.7
+
+69.0
+59.0
+64.4
+66.6
+68.9
+74.8
+81.0
+79.7
+81.0
+
+79.1
+75.4
+78.4
+79.2
+78.8
+82.0
+81.3
+83.0
+87.1
+
+83.8
+81.6
+82.4
+81.3
+82.2
+85.0
+86.8
+87.3
+88.8
+
+39.8
+36.7
+41.8
+44.9
+42.2
+49.8
+48.8
+51.4
+57.1
+
+49.2
+42.5
+50.6
+50.9
+47.9
+54.8
+60.8
+61.7
+67.8
+
+essential role of SEM in achieving high accuracy.
+F. Qualitative Analysis
+Our method excels in robotic perception under challenging
+conditions such as fog and low-light, ensuring accurate
+segmentation and object recognition through multi-modal
+fusion. This robustness is vital for autonomous robots operating in real-world environments, enhancing safety and
+reliability in dynamic and adverse settings. As depicted in
+Fig. 4 and Fig. 5, the model successfully handles complex
+scenarios. The integration of SAM2’s robust segmentation
+foundation enables our method to maintain complete object
+delineation even in partial observation scenarios, eliminating
+mid-segment discontinuities or incomplete contours across
+all semantic categories.
+The prediction of U3M, while showing some degree of
+accuracy, demonstrates notable limitations, especially in scenarios involving low-light conditions or ambiguous objects
+like traffic lights and pedestrians. These weaknesses are
+particularly evident in the misclassification of critical areas
+under challenging lighting. In contrast, our result shows
+
+significant improvements, with our method achieving a more
+precise focus on critical regions. Even under low-light conditions, our model excels in segmenting these objects accurately, highlighting its superior robustness in handling diverse
+environmental challenges. This performance enhancement
+is essential for real-world applications where perception
+systems must maintain high reliability despite environmental
+factors such as lighting and noise, positioning our approach
+at the forefront of autonomous perception technologies.
+V. C ONCLUSION
+In this work, we introduce the SAM2-driven Hybrid Interaction Paradigm (SHIFNet) to empower SAM2 for multimodal semantic segmentation tasks. SHIP overcomes the
+challenges posed by manual effort and the limitations of
+existing datasets. We propose the Semantic-Aware Crossmodal Fusion (SACF) module, which dynamically adjusts
+the primary modality to mitigate inter-modal bias introduced
+by SAM2 with language prompt. Additionally, the Heterogeneous Prompting Decoder (HPD) integrates a Semantic
+Enhancement Module (SEM) to achieve global semantic information alignment and utilizes language guidance to enable
+
+physics-aware feature reassignment. Future work will aim to
+further enhance SHIFNet’s generalization ability to handle
+diverse real-world scenarios without the need for extensive
+task-specific data collection, extending its application across
+various domains requiring robust scene understanding.
+R EFERENCES
+[1] V. Badrinarayanan, A. Kendall, and R. Cipolla, “SegNet: A deep
+convolutional encoder-decoder architecture for image segmentation,”
+IEEE Transactions on Pattern Analysis and Machine Intelligence,
+vol. 39, no. 12, pp. 2481–2495, 2017.
+[2] E. Xie, W. Wang, Z. Yu, A. Anandkumar, J. M. Alvarez, and P. Luo,
+“SegFormer: Simple and efficient design for semantic segmentation
+with transformers,” in Proc. NeurIPS, vol. 34, 2021, pp. 12 077–
+12 090.
+[3] L. Chen, G. Papandreou, I. Kokkinos, K. Murphy, and A. L. Yuille,
+“DeepLab: Semantic image segmentation with deep convolutional
+nets, atrous convolution, and fully connected CRFs,” IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 40, no. 4, pp.
+834–848, 2018.
+[4] Q. Ha, K. Watanabe, T. Karasawa, Y. Ushiku, and T. Harada, “MFNet:
+Towards real-time semantic segmentation for autonomous vehicles
+with multi-spectral scenes,” in Proc. IROS, 2017, pp. 5108–5115.
+[5] S. S. Shivakumar, N. Rodrigues, A. Zhou, I. D. Miller, V. Kumar,
+and C. J. Taylor, “PST900: RGB-thermal calibration, dataset and
+segmentation network,” in Proc. ICRA, 2020, pp. 9441–9447.
+[6] A. Kirillov et al., “Segment anything,” in Proc. ICCV, 2023, pp. 3992–
+4003.
+[7] N. Ravi et al., “SAM 2: Segment anything in images and videos,”
+arXiv preprint arXiv:2408.00714, 2024.
+[8] B. Yao, Y. Deng, Y. Liu, H. Chen, Y. Li, and Z. Yang, “SAM-EventAdapter: adapting segment anything model for Event-RGB semantic
+segmentation,” in Proc. ICRA, 2024, pp. 9093–9100.
+[9] X. Ma, Q. Wu, X. Zhao, X. Zhang, M.-O. Pun, and B. Huang, “SAMassisted remote sensing imagery semantic segmentation with object
+and boundary constraints,” IEEE Transactions on Geoscience and
+Remote Sensing, vol. 62, pp. 1–16, 2024.
+[10] Z. Xie et al., “PA-SAM: Prompt adapter SAM for high-quality image
+segmentation,” arXiv preprint arXiv:2401.13051, 2024.
+[11] J. Wu et al., “Medical SAM adapter: Adapting segment anything model for medical image segmentation,” arXiv preprint
+arXiv:2304.12620, 2023.
+[12] T. Chen et al., “SAM-adapter: Adapting segment anything in underperformed scenes,” in Proc. ICCVW, 2023, pp. 3359–3367.
+[13] J. Zhang et al., “Delivering arbitrary-modal semantic segmentation,”
+in Proc. CVPR, 2023, pp. 1136–1147.
+[14] J. Zhang, H. Liu, K. Yang, X. Hu, R. Liu, and R. Stiefelhagen, “CMX:
+Cross-modal fusion for RGB-X semantic segmentation with transformers,” IEEE Transactions on Intelligent Transportation Systems, vol. 24,
+no. 12, pp. 14 679–14 694, 2023.
+[15] D. Jia et al., “GeminiFusion: Efficient pixel-wise multimodal fusion
+for vision transformer,” in Proc. ICML, 2024.
+[16] Y. Wang, X. Chen, L. Cao, W. Huang, F. Sun, and Y. Wang,
+“Multimodal token fusion for vision transformers,” in Proc. CVPR,
+2022, pp. 12 176–12 185.
+[17] D. Peng and W. Kameyama, “Simple and efficient vision backbone
+adapter for image semantic segmentation,” in Proc. ACML, 2024, pp.
+1071–1086.
+[18] B. Zhu et al., “LanguageBind: Extending video-language pretraining
+to N-modality by language-based semantic alignment,” in Proc. ICLR,
+2024.
+[19] H. Yuan, X. Li, C. Zhou, Y. Li, K. Chen, and C. C. Loy, “Openvocabulary SAM: Segment and recognize twenty-thousand classes
+interactively,” in Proc. ECCV, vol. 15101, 2024, pp. 419–437.
+[20] J. Liu et al., “Multi-interactive feature learning and a full-time multimodality benchmark for image fusion and segmentation,” in Proc.
+ICCV, 2023, pp. 8081–8090.
+[21] F. Deng et al., “FEANet: Feature-enhanced attention network for
+RGB-thermal real-time semantic segmentation,” in Proc. IROS, 2021,
+pp. 4467–4473.
+[22] M. K. Reza, A. Prater-Bennette, and M. S. Asif, “MMSFormer:
+Multimodal transformer for material and semantic segmentation,”
+IEEE Open Journal of Signal Processing, 2024.
+
+[23] S. Dong, W. Zhou, C. Xu, and W. Yan, “EGFNet: Edge-aware
+guidance fusion network for RGB-thermal urban scene parsing,” IEEE
+Transactions on Intelligent Transportation Systems, vol. 25, no. 1, pp.
+657–669, 2024.
+[24] X. Lan, X. Gu, and X. Gu, “MMNet: Multi-modal multi-stage network for RGB-T image semantic segmentation,” Applied Intelligence,
+vol. 52, no. 5, pp. 5817–5829, 2022.
+[25] J. Li, P. Yun, Q. Chen, and R. Fan, “HAPNet: Toward superior
+RGB-thermal scene parsing via hybrid, asymmetric, and progressive
+heterogeneous feature fusion,” arXiv preprint arXiv:2404.03527, 2024.
+[26] A. Xiao, W. Xuan, H. Qi, Y. Xing, N. Yokoya, and S. Lu, “Segment
+anything with multiple modalities,” arXiv preprint arXiv:2408.09085,
+2024.
+[27] H. Yuan, X. Li, C. Zhou, Y. Li, K. Chen, and C. C. Loy, “Openvocabulary SAM: Segment and recognize twenty-thousand classes
+interactively,” in Proc. ECCV, vol. 15101, 2024, pp. 419–437.
+[28] H. Tan and M. Bansal, “LXMERT: Learning cross-modality encoder
+representations from transformers,” in Proc. EMNLP-IJCNLP, 2019,
+pp. 5099–5110.
+[29] S. Antol et al., “VQA: Visual question answering,” in Proc. ICCV,
+2015, pp. 2425–2433.
+[30] O. Vinyals, A. Toshev, S. Bengio, and D. Erhan, “Show and tell: A
+neural image caption generator,” in Proc. CVPR, 2015, pp. 3156–3164.
+[31] A. Radford et al., “Learning transferable visual models from natural
+language supervision,” in Proc. ICML, 2021, pp. 8748–8763.
+[32] B. Xie, J. Cao, J. Xie, F. S. Khan, and Y. Pang, “SED: A simple
+encoder-decoder for open-vocabulary semantic segmentation,” in Proc.
+CVPR, 2024, pp. 3426–3436.
+[33] T. Shao, Z. Tian, H. Zhao, and J. Su, “Explore the potential of CLIP for
+training-free open vocabulary semantic segmentation,” in Proc. ECCV,
+vol. 15144, 2024, pp. 139–156.
+[34] C. Ryali et al., “Hiera: A hierarchical vision transformer without the
+bells-and-whistles,” in Proc. ICML, vol. 202, 2023, pp. 29 441–29 454.
+[35] T.-Y. Lin, P. Dollár, R. Girshick, K. He, B. Hariharan, and S. Belongie,
+“Feature pyramid networks for object detection,” in Proc. CVPR, 2017,
+pp. 936–944.
+[36] Z. Liu, H. Mao, C.-Y. Wu, C. Feichtenhofer, T. Darrell, and S. Xie,
+“A ConvNet for the 2020s,” in Proc. CVPR, 2022, pp. 11 966–11 976.
+[37] B. Li, K. Q. Weinberger, S. Belongie, V. Koltun, and R. Ranftl,
+“Language-driven semantic segmentation,” in Proc. ICLR, 2022.
+[38] O. Ronneberger, P. Fischer, and T. Brox, “U-Net: Convolutional
+networks for biomedical image segmentation,” in Proc. MICCAI, 2015,
+pp. 234–241.
+[39] W. Zhou, S. Dong, M. Fang, and L. Yu, “CACFNet: Cross-modal
+attention cascaded fusion network for RGB-T urban scene parsing,”
+IEEE Transactions on Intelligent Vehicles, vol. 9, no. 1, pp. 1919–
+1929, 2024.
+[40] S. Dong, Y. Feng, Q. Yang, Y. Huang, D. Liu, and H. Fan, “Efficient
+multimodal semantic segmentation via dual-prompt learning,” in Proc.
+IROS, 2024, pp. 14 196–14 203.
+[41] U. Shin, K. Lee, I. S. Kweon, and J. Oh, “Complementary random
+masking for RGB-thermal semantic segmentation,” in Proc. ICRA,
+2024, pp. 11 110–11 117.
+[42] U. Michieli, E. Borsato, L. Rossi, and P. Zanuttigh, “GMNet: Graph
+matching network for large scale part semantic segmentation in the
+wild,” in Proc. ECCV, vol. 12353, 2020, pp. 397–414.
+[43] G. Li, Y. Wang, Z. Liu, X. Zhang, and D. Zeng, “RGB-T semantic
+segmentation with location, activation, and sharpening,” IEEE Transactions on Circuits and Systems for Video Technology, vol. 33, no. 3,
+pp. 1223–1235, 2023.
+[44] Z. Zhao, S. Xu, C. Zhang, J. Liu, P. Li, and J. Zhang, “DIDFuse: Deep
+image decomposition for infrared and visible image fusion,” in Proc.
+IJCAI, 2020, pp. 970–976.
+[45] Z. Huang, J. Liu, X. Fan, R. Liu, W. Zhong, and Z. Luo, “ReCoNet:
+Recurrent correction network for fast and efficient multi-modality
+image fusion,” in Proc. ECCV, vol. 13678, 2022, pp. 539–555.
+[46] H. Xu, J. Ma, J. Jiang, X. Guo, and H. Ling, “U2Fusion: A unified
+unsupervised image fusion network,” IEEE Transactions on Pattern
+Analysis and Machine Intelligence, vol. 44, no. 1, pp. 502–518, 2022.
+[47] B. Li, D. Zhang, Z. Zhao, J. Gao, and X. Li, “U3M: Unbiased multiscale modal fusion model for multimodal semantic segmentation,”
+arXiv preprint arXiv:2405.15365, 2024.
+[48] H. Zhao, J. Shi, X. Qi, X. Wang, and J. Jia, “Pyramid scene parsing
+network,” in Proc. CVPR, 2017, pp. 6230–6239.
+
+

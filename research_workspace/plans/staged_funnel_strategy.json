@@ -1,0 +1,117 @@
+{
+  "repo_root": "/root/Drone-SAM-Adapter",
+  "auto_loop_script": "scripts/auto_train_eval_loop.py",
+  "launcher": "scripts/run_ddp_train.sh",
+  "python_bin": "/root/miniconda3/envs/torch211/bin/python",
+  "work_dir_root": "/root/autodl-tmp/work_dirs/staged_funnel",
+  "artifacts_root": "research_workspace/artifacts/staged_funnel",
+  "train_env": {
+    "PYTHON_BIN": "/root/miniconda3/envs/torch211/bin/python",
+    "DIST_BACKEND": "nccl",
+    "NCCL_LIB_DIR": "/root/miniconda3/envs/torch211/lib/python3.12/site-packages/nvidia/nccl/lib",
+    "NCCL_PREFLIGHT": "1",
+    "NPROC_PER_NODE": "2",
+    "CUDA_VISIBLE_DEVICES": "0,1"
+  },
+  "base_train_flags": [
+    "--model-variant", "rrf_dsd",
+    "--data-root", "/root/autodl-tmp/datasets/FMB",
+    "--batch-size", "8",
+    "--num-workers", "12",
+    "--crop-size", "512",
+    "--save-freq", "10",
+    "--val-freq", "5",
+    "--no-ddp-find-unused-params"
+  ],
+  "eval": {
+    "script": "segmentation/test_rrf_dsd.py",
+    "python_bin": "/root/miniconda3/envs/torch211/bin/python",
+    "data_root": "/root/autodl-tmp/datasets/FMB",
+    "splits": ["val", "test"],
+    "extra_flags": ["--absent-score", "0.0"],
+    "eval_resize_mode": "letterbox",
+    "crop_size": 512,
+    "batch_size": 1,
+    "num_workers": 4
+  },
+  "feedback": {
+    "gap_threshold": 3.0,
+    "stagnation_delta": 0.3,
+    "gap_penalty": 0.25
+  },
+  "recipe_catalog": [
+    {
+      "name": "fmb_ohem_cmr055_aux010_seed42",
+      "tags": ["ohem", "baseline", "strong"],
+      "flags": ["--use-ohem", "--cat-max-ratio", "0.55", "--detail-aux-weight", "0.10", "--seed", "42"]
+    },
+    {
+      "name": "fmb_ohem_cmr056_aux010_seed42",
+      "tags": ["ohem", "baseline"],
+      "flags": ["--use-ohem", "--cat-max-ratio", "0.56", "--detail-aux-weight", "0.10", "--seed", "42"]
+    },
+    {
+      "name": "fmb_ohem_cmr055_aux011_seed42",
+      "tags": ["ohem", "micro_tune"],
+      "flags": ["--use-ohem", "--cat-max-ratio", "0.55", "--detail-aux-weight", "0.11", "--seed", "42"]
+    },
+    {
+      "name": "fmb_cb_ohem_cmr055_aux010_alpha03",
+      "tags": ["ohem", "class_balance"],
+      "flags": [
+        "--use-ohem", "--cat-max-ratio", "0.55", "--detail-aux-weight", "0.10", "--seed", "42",
+        "--use-class-balanced-loss", "--class-balance-alpha", "0.3", "--class-weight-min", "0.5", "--class-weight-max", "3.0"
+      ]
+    },
+    {
+      "name": "fmb_tscb_ohem_cmr055_aux010_ref006",
+      "tags": ["ohem", "structure", "thin"],
+      "flags": [
+        "--use-ohem", "--cat-max-ratio", "0.55", "--detail-aux-weight", "0.10", "--seed", "42",
+        "--use-thin-structure-refiner", "--thin-refiner-scale", "0.06"
+      ],
+      "eval_flags": ["--use-thin-structure-refiner", "--thin-refiner-scale", "0.06"]
+    },
+    {
+      "name": "fmb_cb_tscb_ohem_cmr055_aux010_alpha03_ref006",
+      "tags": ["ohem", "class_balance", "structure", "thin"],
+      "flags": [
+        "--use-ohem", "--cat-max-ratio", "0.55", "--detail-aux-weight", "0.10", "--seed", "42",
+        "--use-class-balanced-loss", "--class-balance-alpha", "0.3", "--class-weight-min", "0.5", "--class-weight-max", "3.0",
+        "--use-thin-structure-refiner", "--thin-refiner-scale", "0.06"
+      ],
+      "eval_flags": ["--use-thin-structure-refiner", "--thin-refiner-scale", "0.06"]
+    }
+  ],
+  "stages": [
+    {
+      "name": "s1_screen_e12",
+      "epochs": 12,
+      "recipes": [
+        "fmb_ohem_cmr055_aux010_seed42",
+        "fmb_ohem_cmr056_aux010_seed42",
+        "fmb_ohem_cmr055_aux011_seed42",
+        "fmb_cb_ohem_cmr055_aux010_alpha03",
+        "fmb_tscb_ohem_cmr055_aux010_ref006",
+        "fmb_cb_tscb_ohem_cmr055_aux010_alpha03_ref006"
+      ],
+      "max_cycles": 6,
+      "top_k_next": 3,
+      "abort_if_best_below": 56.5
+    },
+    {
+      "name": "s2_refine_e20",
+      "epochs": 20,
+      "max_cycles": 3,
+      "top_k_next": 2,
+      "abort_if_best_below": 61.5
+    },
+    {
+      "name": "s3_confirm_e30",
+      "epochs": 30,
+      "max_cycles": 2,
+      "top_k_next": 1,
+      "abort_if_best_below": 63.0
+    }
+  ]
+}

@@ -1,0 +1,731 @@
+TASeg: Text-aware RGB-T Semantic Segmentation based on
+Fine-tuning Vision Foundation Models
+
+arXiv:2506.21975v1 [cs.CV] 27 Jun 2025
+
+Meng Yu1 , Te Cui1 , Qitong Chu1 , Wenjie Song1 , Yi Yang1 , Yufeng Yue1
+Abstract— Reliable semantic segmentation of open environments is essential for intelligent systems, yet significant problems remain: 1) Existing RGB-T semantic segmentation models
+mainly rely on low-level visual features and lack high-level
+textual information, which struggle with accurate segmentation
+when categories share similar visual characteristics. 2) While
+SAM excels in instance-level segmentation, integrating it with
+thermal images and text is hindered by modality heterogeneity
+and computational inefficiency. To address these, we propose
+TASeg, a text-aware RGB-T segmentation framework by using
+Low-Rank Adaptation (LoRA) fine-tuning technology to adapt
+vision foundation models. Specifically, we propose a Dynamic
+Feature Fusion Module (DFFM) in the image encoder, which
+effectively merges features from multiple visual modalities
+while freezing SAM’s original transformer blocks. Additionally,
+we incorporate CLIP-generated text embeddings in the mask
+decoder to enable semantic alignment, which further rectifies
+the classification error and improves the semantic understanding accuracy. Experimental results across diverse datasets
+demonstrate that our method achieves superior performance in
+challenging scenarios with fewer trainable parameters.
+
+I. INTRODUCTION
+Semantic segmentation plays a fundamental role in enabling scene understanding for intelligent systems. The accurate segmentation of images into semantically labeled regions
+allows these systems to interact with their environments
+more effectively, enhancing their operational capabilities and
+decision-making processes.
+Although prior works have achieved remarkable segmentation performance on standard RGB-based datasets, they often
+struggle in challenging conditions such as poor visibility
+caused by adverse weather or low illumination. To address
+this, researchers [1]–[5] have introduced thermal/infrared
+images to enhance the performance of visual perception
+tasks. Despite significant progress, these methods predominantly rely on visual features, lacking the ability to comprehend semantic information. This limitation hampers their
+ability to accurately segment individual objects in complex
+scenes, particularly under occlusions, overlapping objects,
+or ambiguous boundaries. These limitations highlight the
+need for incorporating additional semantic cues, such as
+textual information, to help improve high-level semantic
+understanding for fine-grained segmentation.
+Recent advancements in foundation models, such as Segment Anything Model (SAM) [6], have demonstrated exThis work is supported by the National Natural Science Foundation of
+China under Grant 62473050, 92370203.
+1 Meng Yu, Te Cui, Qitong Chu, Wenjie Song, Yi Yang, and
+Yufeng Yue are with School of Automation, Beijing Institute of Technology, Beijing 100081, China. (Corresponding Author: Yufeng Yue,
+yueyufeng@bit.edu.cn)
+
+Fig. 1. We introduce TASeg, a text-aware segmentation framework, which
+facilitates RGB-T semantic segmentation across various scenarios.
+
+ceptional generalization capabilities and strong instance segmentation capabilities. Similarly, Vision-Language Models
+(VLMs) such as CLIP [7] and ALIGN [8] have revolutionized semantic understanding by aligning visual and textual
+representations [9], [10]. However, a significant issue arises
+when applying these models to RGB-T domain: the inherent
+heterogeneity between RGB and thermal modalities often
+leads to suboptimal performance. This occurs because the
+data distributions in the RGB-T domain deviate from those in
+the models’ pretraining data. Additionally, fine-tuning these
+large models with full parameters is computationally expensive and often impractical, especially when task-specific
+datasets are limited in size.
+Motivated by the above observations, we propose a novel
+framework that adapts SAM for RGB-T semantic segmentation tasks. Specifically, Low-Rank Adaptation (LoRA) finetuning technology is employed to efficiently adapt the image
+encoder and mask decoder of SAM, which introduces trainable low-rank matrices into the model, enabling task-specific
+adaptation while keeping the majority of the pretrained
+parameters frozen. Additionally, we introduce a Dynamic
+Feature Fusion Module (DFFM) in the image encoder, which
+effectively merges features from multiple visual modalities.
+Furthermore, textual guidance using pretrained CLIP model
+is incorporated within the mask decoder to enhance semantic
+comprehension. By aligning text embeddings with visual
+features, our method rectifies semantic classification errors
+and improves the object segmentation accuracy.
+In summary, the contributions of this paper are summarized as follows:
+1) We propose TASeg, which employs LoRA to adapt
+SAM for RGB-T semantic segmentation, where a
+
+Fig. 2.
+
+The overall framework of our TASeg, which processes pixel-aligned RGB-thermal image pairs along with predefined semantic classes.
+
+Dynamic Feature Fusion Module is presented to enable
+effective RGB-T feature fusion.
+2) We introduce text-guided mask generation using CLIP,
+enabling semantic alignment and improving segmentation accuracy.
+3) Extensive experiments on benchmark datasets demonstrate the effectiveness of our approach, showcasing its
+ability to generalize across diverse data distributions.
+II. RELATED WORKS
+A. RGB-T Semantic Segmentation
+Single-modal segmentation networks struggle in complex
+scenarios, driving the development of RGB-T fusion methods. Early works like MFNet [1] and RTFNet [11] employed
+dual-stream architectures with element-wise summation for
+feature fusion. However, these simplistic fusion strategies
+overlooked cross-modal discrepancies. Subsequent studies
+introduced refined mechanisms: GMNet [12] optimized features through channel/spatial attention, and EGFNet [13] preserved boundaries using edge priors. Recent approaches like
+EAEFNet [4] further explored explicit complementary modeling and morphological feature extraction. Despite progress,
+they often face challenges in accurately understanding and
+segmenting individual objects within complex images containing occlusions, overlapping objects, or ambiguous boundaries. Consequently, our work is motivated by the need to
+develop a framework that effectively preserves the integrity
+of individual objects.
+B. VLMs-based Semantic Segmentation
+Foundation models like SAM and CLIP have revolutionized open-vocabulary segmentation. OpenSeg [14] improved
+granularity via region-word grounding. Two-stage methods
+generated class-agnostic masks followed by CLIP-based classification, whereas Ovseg [9] fine-tuned CLIP for enhanced
+performance. Grounded-SAM [10] combined open-set detection with segmentation for arbitrary text inputs. However,
+they primarily focus on clean RGB imagery and may struggle
+with domain-specific challenges. In particular, the inherent
+heterogeneity between modalities and the lack of thermalspecific pretraining limit their effectiveness in specialized
+domains such as thermal imaging.
+This gap motivates our exploration of domain-adaptive
+segmentation approaches that can bridge the modality gap
+
+while preserving the generalization capabilities of foundation
+models. Parameter-efficient fine-tuning (PEFT) techniques
+have been developed for adapting large-scale models to
+specific downstream tasks. For example, SAM-Adapter [15]
+inserted lightweight adapter [16] layers, while SAMed [17]
+adopted LoRA to update weights via low-rank decomposition
+[18]. Among these methods, LoRA stands out for its balance
+between parameter efficiency and performance, making it an
+ideal choice for our work.
+III. METHOD
+A. Framework Overview
+The proposed framework, depicted in Fig. 2, processes
+pixel-aligned RGB-thermal image pairs along with predefined semantic classes. First, both modalities are jointly encoded: the RGB-thermal images are fed into a tunable image
+encoder to extract hierarchical visual features, while the
+semantic class labels are transformed into text embeddings
+via a text encoder. Subsequently, these cross-modal representations are fused in a dual-prompt segmentation stage, where
+the mask decoder dynamically integrates text prompts and
+spatial prompts (points) to guide the segmentation process.
+B. Dual-Prompt Cross-Modal Segmentation
+1) Fine-tuning the Image Encoder: While SAM is
+originally designed for RGB modality, our task focuses on
+RGB-T semantic segmentation, necessitating a mechanism
+to effectively fuse multisensor features. To address this,
+we propose the Dynamic Feature Fusion Module (DFFM),
+which builds upon the frozen transformer blocks of SAM
+while introducing trainable components to enable RGB-T
+feature fusion. The structure is presented in Fig. 3.
+Specifically, the input RGB and thermal images are denoted as Irgb and Ith , respectively. These images are firstly
+converted into patch embedding sequences ergb and eth using
+the PatchEmbed module, which is represented as:
+ergb = PatchEmbed(Irgb ), eth = PatchEmbed ∗ (Ith ),
+
+(1)
+
+The PatchEmbed module splits each image into nonoverlapping patches via convolutional operations and projects
+these patches into an embedded space. Notably, while the
+RGB branch remains frozen and the thermal branch is
+trainable.
+
+core of the attention mechanism in the Transformer Blocks
+involves computing a weighted combination of values V
+based on the similarity between queries Q and keys K.
+When fine-tuning, we need to focus on the parts that most
+significantly impact the model’s output and performance.
+Specifically, the Q and V layers are critical because they
+directly influence the computation of attention weights and
+the final output representation. By adjusting these two parameters, the maximum performance improvement can be
+obtained. Mathematically, this process can be expressed as:
+Q = W q F = W0q F + Bq Aq F
+V = W v F = W0v F + Bv Av F
+
+Fig. 3.
+
+The scheme of fine-tuning the Image Encoder.
+
+Then, the embedded features are transferred into the
+Dynamic Feature Fusion Module. For the i-th DFFM and
+i−1
+Transformer Block, let Fi−1
+DFFM and FT B denote the outputs
+of the (i-1)-th DFFM and TB, respectively. The i-th output
+of DFFM is computed as:
+i−1
+FiDFFM = conv(conv(Fi−1
+DFFM ) + AttentionBlock(conv(FT B )))
+(2)
+where conv represents a 1 × 1 convolution operation used
+to project the input features to a consistent dimensionality. The Attention Block adopts the Squeeze-and-Excitation
+Block (SEBlock) [19], which is particularly effective as it
+adaptively recalibrates channel-wise feature responses by
+explicitly modeling interdependencies between channels.
+The output of the i-th TB, denoted as FiT B , is computed
+as:
+i
+FiT B = Trans f ormerBlock(Fi−1
+(3)
+T B + FDFFM )
+
+where TransformerBlock refers to the frozen transformer
+block from SAM. By adding the outputs of the (i-1)-th TB
+and the i-th DFFM, we enhance the feature representation
+while preserving the pretrained knowledge encoded in the
+frozen transformer blocks.
+For the first DFFM (i=1), the input features are initialized
+as the patch embedding sequences of the RGB and thermal
+images:
+F0DFFM = eth , F0T B = ergb
+(4)
+where this initialization ensures that the multisensor features
+are effectively integrated from the beginning of the network.
+By iteratively refining the feature representations, the
+Image Encoder strikes a balance between preserving the generalization capabilities of the pretrained SAM and adapting
+to the specific requirements of RGB-T data.
+To adapt the pretrained SAM model to RGB-T semantic
+segmentation task, LoRA fine-tuning is employed in the
+image encoder. LoRA fine-tunes the model by introducing
+low-rank updates to the pretrained parameters, its scheme
+applied in the transformer block is shown in Fig. 3. The
+
+(5)
+
+where W0q ,W0v ∈ Rd×d are the pretrained frozen weights of
+SAM, Bq , Bv ∈ Rd×r and Aq , Av ∈ Rr×d are trainable lowrank matrices, with r being the rank of the decomposition.
+F represents the input feature to the Transformer Blocks.
+2) Text-aware Mask Generation: The original mask decoder in SAM takes several inputs to generate segmentation
+masks: image embeddings een , image positional encoding
+e pe , sparse embeddings es , and dense embeddings ed . Here,
+e pe provides position information, which is crucial for aligning features in the image space. Then, the transformer-based
+mask decoder processes three key components:
+Es = een + ed , E p = e pe , Et = concat(eiou , emask , es )
+
+(6)
+
+where eiou and emask represent iou tokens and mask tokens,
+respectively. The transformer block processes these components to produce two outputs:
+em , e f = Trans f ormer(Es , E p , Et )
+
+(7)
+
+To adapt the feature in the mask decoder, LoRA is also
+applied to the transformer layers and token-to-image attention. Through upscaling operations, the final image mask
+embeddings eM can be obtained from em .
+As SAM lacks explicit semantic understanding, which
+may lead to errors in semantic classification. In our work,
+we introduce textual information using the CLIP model.
+Specifically, we utilize CLIP to generate text embeddings
+et corresponding to the semantic classes.
+Then, we use image mask embeddings eM as query vectors, while the text embeddings et provide key-value pairs
+through linear transformations. This allows us to compute
+the aligned text-image feature as follows:
+
+
+eM WQ (et WK )T
+√
+etT WV
+(8)
+FM = Softmax
+dk
+where WQ , W√K , WV are learnable weights matrices. The
+scaling factor dk ensures gradient stability during training.
+Finally, the predicted masks can be obtained from the resulting features through a projection.
+3) Supervised Loss Function: To optimize our model
+effectively, we utilize Cross-Entropy Loss (L1 ) to ensure
+pixel-wise accuracy. To address the challenges of fuzzy
+boundaries and class imbalance, we introduce the Dice
+Loss (LDice ), which is particularly effective for tasks where
+boundary regions are ambiguous.
+
+Fig. 4.
+
+The sample qualitative results on MFNet dataset.
+
+TABLE I
+Q UANTITATIVE COMPARISONS (%) ON MFN ET AND PST900
+EVALUATION SET. T HE BEST RESULT IS HIGHLIGHTED IN B OLD .
+
+Trainable
+MFNet
+PST900
+params/M Daytime Nighttime Overall
+MFNet [1]
+8.4
+36.1
+36.8
+39.7
+57.02
+RTFNet [11]
+245.7
+45.8
+54.8
+53.2
+60.46
+PSTNet [2]
+105.8
+48.4
+68.36
+GMNet [12]
+149.8
+49.0
+57.7
+57.3
+84.12
+EGFNet [13]
+201.3
+47.3
+55.0
+54.8
+78.51
+FDCNet [20]
+52.91
+47.8
+56.8
+56.3
+77.11
+EAEFNet [4]
+200.4
+58.9
+85.40
+semanticRT [21]
+58.0
+84.47
+LASNet [3]
+93.58
+45.2
+58.7
+54.9
+84.40
+MDRNET+ [22]
+64.6
+48.1
+56.7
+56.8
+74.62
+CAINet [5]
+12.16
+58.6
+84.74
+MDNet [23]
+26.96
+59.8
+48.7
+58.9
+82.97
+Ours
+28.77
+82.4
+71.8
+77.6
+86.09
+Methods
+
+IV. EXPERIMENTS
+A. Experimental Setup
+We conduct comprehensive evaluations on four publicly RGB-T benchmarks: MFNet [1], PST900 [2], KAIST
+Pedestrain (KP) [24], FMB [25], and our self-collected
+dataset in real-world scenes.
+We adopt mIoU (mean Intersection over Union) as the
+primary metric, complemented by per-class IoU analysis.
+Our framework builds on SAM’s ViT-H image encoder
+and mask decoder, both frozen and adapted via LoRA for
+parameter-efficient tuning. Additionally, the text encoder is
+initialized with the pretrained CLIP model based on the ViTL/16 backbone. We train our model using an NVIDIA GTX
+3090 GPU, with an initial learning rate of 5 × 10−4 and a
+weight decay of 0.01. During the testing phase, the model
+trained on the KP dataset is directly applied to evaluate the
+FMB dataset without further training.
+B. Comparison with State-of-the-art Methods
+1) Evaluation on MFNet and PST900 datasets: We
+compare our method with those of leading SOTA methods.
+The quantitative results are shown in Table I, it is noteworthy that our method exhibited superior performance compared to its competitors, achieving an overall mIoU of 77.6%
+
+and 86.09% on the MFNet and PST900 dataset, respectively.
+Besides, our method achieved the highest performance in
+both daytime and nighttime scenarios.
+Qualitative semantic segmentation results on the MFNet
+dataset are illustrated in Fig. 4. In contrast, our approach effectively segments objects with precision and distinct boundaries, even at a distance. This precision is attributed to the
+proposed Dynamic Feature Fusion Module, which effectively
+preserves critical image features during multimodal fusion.
+Similarly, the segmentation results on the PST900 dataset
+are presented in Fig. 5. For example, in the first three rows,
+other methods either fail to completely segment or misdetect
+the “Survivor” class, whereas our method maintains robust
+segmentation performance.
+2) Evaluation on KP and FMB datasets: We compare
+our method with five publicly available methods, including
+MFNet [1], RTFNet [11], UDA [24], CMX [26], and CAINet
+[5].
+The quantitative results are summarized in Table II. Notably, our method achieves an overall performance improvement of 4.9% over the second-best method. Qualitative
+visualizations of four representative samples are presented in
+Fig. 7. The results clearly show that our method’s segmentation performance aligns more closely with the ground truth
+annotations. For instance, our method accurately segment
+the “Traffic light” and “Traffic sign” classes in all cases.
+Additionally, in the second row, only our method successfully
+segment the “Terrain” class. Overall, our method achieves
+superior segmentation performance, demonstrating its ability
+to handle complex and diverse scenarios effectively.
+To evaluate the generalization capability of our model, we
+directly apply the model trained on the KP dataset to the
+FMB test dataset. The last two rows of Fig. 7 illustrate the
+visualization results under nighttime and foggy conditions.
+Compared to the other methods, our method effectively
+handles these challenging scenarios, accurately segmenting
+each category with precise boundaries. This highlights the
+strong robustness and generalization ability of our approach,
+even under adverse conditions.
+
+Fig. 5.
+
+The sample qualitative results on PST900 dataset.
+
+90.4 24.0 0.0
+92.8 58.4 0.0
+93.8 62.9 0.1
+93.5 74.5 0.0
+88.5 56.3 0.0
+92.2 79.0 26.2
+
+Bicycle
+
+Motorcycle
+
+Train
+
+Bus
+
+Truck
+
+Car
+
+Rider
+
+69.3 0.2
+81.7 3.7
+76.2 18.8
+87.2 34.3
+63.1 16.0
+64.0 26.5
+
+Person
+
+Vegetation
+
+0.0
+0.0
+11.4
+45.1
+28.7
+39.7
+
+Sky
+
+Traffic sign
+
+0.0 0.1
+9.1
+0.0
+0.0 0.6
+0.0
+0.0
+0.2 18.9 10.6 0.0
+0.0 47.1 46.2 10.9
+0.0 44.7 20.0 8.1
+0.0 54.3 42.5 26.8
+
+Terrain
+
+Traffic light
+
+75.1
+86.6
+76.0
+90.2
+79.4
+83.4
+
+Pole
+
+Wall
+
+23.6
+39.4
+30.4
+53.8
+44.7
+47.5
+
+Fence
+
+Building
+
+Methods
+MFNet [1] 93.5
+RTFNet [11] 94.6
+UDA [24]
+95.7
+CMX [26] 97.7
+CAINet [5] 95.3
+Ours
+97.8
+
+Sidewalk
+
+Road
+
+TABLE II
+Q UANTITATIVE COMPARISONS (%) ON KP DATASET EVALUATION SET. T HE BEST RESULT UNDER EACH CASE IS HIGHLIGHTED IN B OLD .
+
+69.6 0.3
+0.3 0.0 0.0
+0.6
+87.7 0.0
+0.0 0.0 0.0
+0.5
+69.6 2.0 42.0 0.0 4.9 20.2
+91.6 0.0 59.7 0.0 46.1 0.2
+83.4 4.6 58.8 0.0 28.1 0.3
+92.7 11.5 77.9 0.0 48.2 28.3
+
+mIoU
+24.0
+28.7
+33.4
+46.2
+40.6
+51.1
+
+TABLE III
+A BLATION STUDIES ON MFN ET DATASET. T HE BEST ONE IS IN B OLD .
+
+Fig. 6.
+
+The sample qualitative results on our dataset.
+
+3) Evaluation on our dataset: To further validate the
+practical applicability of our method, we evaluate several
+approaches using our dataset in real-world scenarios. All
+methods are tested using their pre-trained models from the
+MFNet dataset. Qualitative results are presented in Fig. 6. In
+contrast, our method consistently achieves precise and robust
+segmentation, even in complex and dynamic environments.
+C. Complexity Analysis
+In addition to leveraging frozen parameters from the large
+model, our method significantly reduces the total number
+of trainable parameters to 28.77M, seen in Table I. Furthermore, our approach is computationally efficient, as it can be
+trained on a single 3090 GPU without demanding extensive
+computational resources, unlike many VLMs-based methods
+that rely on high computational power. During inference,
+our method achieves a speed of 4.65 fps for images with
+a resolution of 640 × 480. While the real-time performance
+is not yet optimal, the trade-off is justified by the superior
+segmentation accuracy and robustness, which outperform
+those of competing methods.
+D. Ablation Studies
+We perform ablation studies on the MFNet dataset, and
+the quantitative results are presented in Table III. For the
+“Baseline” condition, we retain LoRA layers in the image
+encoder of SAM, where RGB and thermal image embeddings
+
+No.
+1
+2
+3
+4
+5
+6
+7
+
+Baseline
+✓
+✓
+✓
+✓
+✓
+✓
+✓
+
+DFFM
+
+✓
+✓
+✓
+✓
+
+LoRA in mask decoder
+
+Text
+
+✓
+✓
+
+✓
+✓
+
+✓
+✓
+
+✓
+
+mIoU
+71.6
+72.7
+74.9
+73.8
+75.3
+75.1
+77.6
+
+are simply concatenated. The results demonstrate that each
+module significantly enhances the performance of segmentation. For instance, the introduction of the DFFM improves
+the mIoU from 71.6 % (baseline) to 73.8 %, highlighting
+its ability to effectively fuse multimodal features and refine
+feature representations. Adding LoRA layers to the mask
+decoder further boosts performance, increasing the mIoU
+to 72.7 %, and to 75.1 % when integrated with DFFM.
+Furthermore, the incorporation of text information further
+improves semantic understanding, yielding an improvement
+of 1.5 % over the configuration with only the DFFM.
+V. CONCLUSIONS
+In this paper, we propose TASeg, a novel framework that
+adapts SAM for RGB-T semantic segmentation. By freezing
+the majority of SAM’s original parameters and selectively
+introducing trainable LoRA layers, our approach achieves a
+balance between computational efficiency and task-specific
+performance, making it well-suited for multimodal tasks.
+Compared to existing methods, our method is capable of segmenting pixel-level objects and efficiently adapts to diverse
+data distributions through efficient fine-tuning. Overall, our
+method addresses the issues of both segmentation integrity
+and modality heterogeneity. Extensive experiments validate
+the effectiveness and generalization of our work.
+
+Fig. 7.
+
+The sample qualitative results on KP and FMB dataset.
+
+R EFERENCES
+[1] Qishen Ha, Kohei Watanabe, Takumi Karasawa, Yoshitaka Ushiku, and
+Tatsuya Harada. Mfnet: Towards real-time semantic segmentation for
+autonomous vehicles with multi-spectral scenes. In 2017 IEEE/RSJ
+International Conference on Intelligent Robots and Systems (IROS),
+pages 5108–5115. IEEE, 2017.
+[2] Shreyas S Shivakumar, Neil Rodrigues, Alex Zhou, Ian D Miller, Vijay
+Kumar, and Camillo J Taylor. Pst900: Rgb-thermal calibration, dataset
+and segmentation network. In 2020 IEEE international conference on
+robotics and automation (ICRA), pages 9441–9447. IEEE, 2020.
+[3] Gongyang Li, Yike Wang, Zhi Liu, Xinpeng Zhang, and Dan Zeng.
+Rgb-t semantic segmentation with location, activation, and sharpening.
+IEEE Transactions on Circuits and Systems for Video Technology,
+33(3):1223–1235, 2022.
+[4] Mingjian Liang, Junjie Hu, Chenyu Bao, Hua Feng, Fuqin Deng,
+and Tin Lun Lam. Explicit attention-enhanced fusion for rgb-thermal
+perception tasks. IEEE Robotics and Automation Letters, 2023.
+[5] Ying Lv, Zhi Liu, and Gongyang Li. Context-aware interaction
+network for rgb-t semantic segmentation. IEEE Transactions on
+Multimedia, 2024.
+[6] Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe
+Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alexander C
+Berg, Wan-Yen Lo, et al. Segment anything. In Proceedings of the
+IEEE/CVF International Conference on Computer Vision, pages 4015–
+4026, 2023.
+[7] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh,
+Gabriel Goh, Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela
+Mishkin, Jack Clark, et al. Learning transferable visual models from
+natural language supervision. In International conference on machine
+learning, pages 8748–8763. PMLR, 2021.
+[8] Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu
+Pham, Quoc Le, Yun-Hsuan Sung, Zhen Li, and Tom Duerig. Scaling
+up visual and vision-language representation learning with noisy text
+supervision. In International conference on machine learning, pages
+4904–4916. PMLR, 2021.
+[9] Feng Liang, Bichen Wu, Xiaoliang Dai, Kunpeng Li, Yinan Zhao,
+Hang Zhang, Peizhao Zhang, Peter Vajda, and Diana Marculescu.
+Open-vocabulary semantic segmentation with mask-adapted clip. In
+Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, pages 7061–7070, 2023.
+[10] Tianhe Ren, Shilong Liu, Ailing Zeng, Jing Lin, Kunchang Li, He Cao,
+Jiayu Chen, Xinyu Huang, Yukang Chen, Feng Yan, et al. Grounded
+sam: Assembling open-world models for diverse visual tasks. arXiv
+preprint arXiv:2401.14159, 2024.
+[11] Yuxiang Sun, Weixun Zuo, and Ming Liu. Rtfnet: Rgb-thermal fusion
+network for semantic segmentation of urban scenes. IEEE Robotics
+and Automation Letters, 4(3):2576–2583, 2019.
+[12] Wujie Zhou, Jinfu Liu, Jingsheng Lei, Lu Yu, and Jenq-Neng Hwang.
+Gmnet: Graded-feature multilabel-learning network for rgb-thermal
+urban scene semantic segmentation. IEEE Transactions on Image
+Processing, 30:7790–7802, 2021.
+[13] Wujie Zhou, Shaohua Dong, Caie Xu, and Yaguan Qian. Edge-aware
+guidance fusion network for rgb–thermal scene parsing. In Proceed-
+
+ings of the AAAI conference on artificial intelligence, volume 36, pages
+3571–3579, 2022.
+[14] Golnaz Ghiasi, Xiuye Gu, Yin Cui, and Tsung-Yi Lin. Scaling openvocabulary image segmentation with image-level labels. In European
+Conference on Computer Vision, pages 540–557. Springer, 2022.
+[15] Tianrun Chen, Lanyun Zhu, Chaotao Deng, Runlong Cao, Yan Wang,
+Shangzhan Zhang, Zejian Li, Lingyun Sun, Ying Zang, and Papa Mao.
+Sam-adapter: Adapting segment anything in underperformed scenes. In
+Proceedings of the IEEE/CVF International Conference on Computer
+Vision, pages 3367–3375, 2023.
+[16] Neil Houlsby, Andrei Giurgiu, Stanislaw Jastrzebski, Bruna Morrone,
+Quentin De Laroussilhe, Andrea Gesmundo, Mona Attariyan, and
+Sylvain Gelly. Parameter-efficient transfer learning for nlp. In International conference on machine learning, pages 2790–2799. PMLR,
+2019.
+[17] Kaidong Zhang and Dong Liu. Customized segment anything model
+for medical image segmentation. arXiv preprint arXiv:2304.13785,
+2023.
+[18] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi
+Li, Shean Wang, Lu Wang, and Weizhu Chen. Lora: Low-rank
+adaptation of large language models. arXiv preprint arXiv:2106.09685,
+2021.
+[19] Jie Hu, Li Shen, and Gang Sun. Squeeze-and-excitation networks. In
+Proceedings of the IEEE conference on computer vision and pattern
+recognition, pages 7132–7141, 2018.
+[20] Shenlu Zhao and Qiang Zhang. A feature divide-and-conquer network
+for rgb-t semantic segmentation. IEEE Transactions on Circuits and
+Systems for Video Technology, 2022.
+[21] Wei Ji, Jingjing Li, Cheng Bian, Zhicheng Zhang, and Li Cheng.
+Semanticrt: A large-scale dataset and method for robust semantic
+segmentation in multispectral images. In Proceedings of the 31st ACM
+International Conference on Multimedia, pages 3307–3316, 2023.
+[22] Shenlu Zhao, Yichen Liu, Qiang Jiao, Qiang Zhang, and Jungong Han.
+Mitigating modality discrepancies for rgb-t semantic segmentation.
+IEEE Transactions on Neural Networks and Learning Systems, 2023.
+[23] Wujie Zhou, Hongping Wu, and Qiuping Jiang. Mdnet: Mambaeffective diffusion-distillation network for rgb-thermal urban dense
+prediction. IEEE Transactions on Circuits and Systems for Video
+Technology, 2024.
+[24] Yeong-Hyeon Kim, Ukcheol Shin, Jinsun Park, and In So Kweon.
+Ms-uda: Multi-spectral unsupervised domain adaptation for thermal
+image semantic segmentation. IEEE Robotics and Automation Letters,
+6(4):6497–6504, 2021.
+[25] Jinyuan Liu, Zhu Liu, Guanyao Wu, Long Ma, Risheng Liu, Wei
+Zhong, Zhongxuan Luo, and Xin Fan. Multi-interactive feature
+learning and a full-time multi-modality benchmark for image fusion
+and segmentation. In Proceedings of the IEEE/CVF international
+conference on computer vision, pages 8115–8124, 2023.
+[26] Jiaming Zhang, Huayao Liu, Kailun Yang, Xinxin Hu, Ruiping Liu,
+and Rainer Stiefelhagen. Cmx: Cross-modal fusion for rgb-x semantic
+segmentation with transformers. IEEE Transactions on intelligent
+transportation systems, 2023.
+
+

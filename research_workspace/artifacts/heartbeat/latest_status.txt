@@ -1,0 +1,12 @@
+timestamp=2026-03-25 11:10:02
+train_cnt=0
+loop_cnt=0
+df_avail_gb=13
+gpu_util=0,0
+active_work_dir=
+train_log_age_sec=63543
+sched_log_age_sec=76899
+history_lines=20
+pending_recipe_cnt=4
+train_tail=[exit_code] 0
+sched_tail=[auto-loop] leaderboard: /root/Drone-SAM-Adapter/research_workspace/artifacts/auto_loop/leaderboard.md

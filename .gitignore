@@ -1,0 +1,47 @@
+# Checkpoints & weights (大文件，不入库)
+checkpoints/
+work_dirs/
+segmentation/pretrained/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dataset (本地路径，不入库)
+data/
+segmentation/data/
+
+# Logs & outputs
+*.log
+*.out
+runs/
+wandb/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# HuggingFace cache
+.cache/
+
+# Compiled extensions
+*.so
+*.pyd
+sam2/build/
+sam2/*.egg-info/

@@ -1,0 +1,50 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand*\HyPL@Entry[1]{}
+\HyPL@Entry{0<</S/D>>}
+\@writefile{toc}{\contentsline {section}{\numberline {1}引言}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}相关工作}{1}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}多模态语义分割}{1}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}基础模型适配与密集预测迁移}{2}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}无人机场景与小目标分割}{2}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}方法}{2}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}整体架构}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}RGB 编码器与热红外编码器}{2}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}CACAF：条件感知跨模态自适应融合}{2}{subsection.3.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overall architecture of CACAF-HGSOAD{}. The framework adopts an asymmetric dual-encoder design, performs condition-aware cross-modal fusion at four scales, and decodes the fused features with a hierarchical small-object-aware decoder.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:overview}{{1}{3}{Overall architecture of \method {}. The framework adopts an asymmetric dual-encoder design, performs condition-aware cross-modal fusion at four scales, and decodes the fused features with a hierarchical small-object-aware decoder}{figure.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Detailed design of CACAF. At each scale, modality features are aligned to a shared embedding space, weighted by modal quality assessment, enhanced by bidirectional cross-modal attention when affordable, and finally fused with adaptive weights.}}{3}{figure.2}\protected@file@percent }
+\newlabel{fig:cacaf}{{2}{3}{Detailed design of CACAF. At each scale, modality features are aligned to a shared embedding space, weighted by modal quality assessment, enhanced by bidirectional cross-modal attention when affordable, and finally fused with adaptive weights}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}HGSOAD：层级引导小目标感知解码}{3}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}训练目标}{3}{subsection.3.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}实验}{3}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}数据集与评测协议}{3}{subsection.4.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparison with the direct baseline on FMB test.}}{4}{table.1}\protected@file@percent }
+\newlabel{tab:main}{{1}{4}{Comparison with the direct baseline on FMB test}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Module ablation on FMB test.}}{4}{table.2}\protected@file@percent }
+\newlabel{tab:ablation}{{2}{4}{Module ablation on FMB test}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}实现细节}{4}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}与现有方法对比}{4}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}模块消融与损失函数消融}{4}{subsection.4.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Loss function ablation on FMB test.}}{4}{table.3}\protected@file@percent }
+\newlabel{tab:loss}{{3}{4}{Loss function ablation on FMB test}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces MFNet comparison under the strict 9-class protocol.}}{4}{table.4}\protected@file@percent }
+\newlabel{tab:mfnet}{{4}{4}{MFNet comparison under the strict 9-class protocol}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}跨数据集补充实验}{4}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}定性对比与可解释性分析}{4}{subsection.4.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}讨论与结论}{4}{section.5}\protected@file@percent }
+\bibcite{sam}{1}
+\bibcite{sam2}{2}
+\bibcite{vitadapter}{3}
+\bibcite{samadapter}{4}
+\bibcite{cmx}{5}
+\bibcite{cmnext}{6}
+\bibcite{mmsam}{7}
+\bibcite{fmb}{8}
+\bibcite{mfnet}{9}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Qualitative comparisons on five representative FMB test scenes (\texttt  {00779}, \texttt  {00048}, \texttt  {00121}, \texttt  {00712}, and \texttt  {01478}). Compared with MM SAM-Adapter, the proposed method yields clearer boundaries and more reliable recovery of small or weakly illuminated targets under challenging RGB-T conditions.}}{5}{figure.3}\protected@file@percent }
+\newlabel{fig:qualitative}{{3}{5}{Qualitative comparisons on five representative FMB test scenes (\texttt {00779}, \texttt {00048}, \texttt {00121}, \texttt {00712}, and \texttt {01478}). Compared with MM SAM-Adapter, the proposed method yields clearer boundaries and more reliable recovery of small or weakly illuminated targets under challenging RGB-T conditions}{figure.3}{}}
+\bibcite{rtfnet}{10}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Visualization of adaptive fusion weights in CACAF. Thermal contributions are concentrated at shallow and intermediate scales, while deeper scales are dominated by the RGB branch.}}{6}{figure.4}\protected@file@percent }
+\newlabel{fig:weights}{{4}{6}{Visualization of adaptive fusion weights in CACAF. Thermal contributions are concentrated at shallow and intermediate scales, while deeper scales are dominated by the RGB branch}{figure.4}{}}
+\gdef \@abspage@last{6}

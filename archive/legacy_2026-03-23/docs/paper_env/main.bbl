@@ -1,0 +1,129 @@
+\begin{thebibliography}{10}
+
+\bibitem{zhang2021multimodalsurvey}
+Y.~Zhang, D.~Sidib{\'e}, O.~Morel, and F.~M{\'e}riaudeau, ``Deep multimodal fusion for semantic image segmentation: A survey,'' {\em Image and Vision Computing}, vol.~105, p.~104042, 2021.
+
+\bibitem{hazirbas2016fusenet}
+C.~Hazirbas, L.~Ma, C.~Domokos, and D.~Cremers, ``{FuseNet}: Incorporating depth into semantic segmentation via fusion-based {CNN} architecture,'' in {\em Proceedings of the Asian Conference on Computer Vision}, pp.~213--228, 2016.
+
+\bibitem{zhang2023cmx}
+J.~Zhang, H.~Liu, K.~Yang, X.~Hu, R.~Liu, and R.~Stiefelhagen, ``{CMX}: Cross-modal fusion for {RGB}-{X} semantic segmentation with transformers,'' {\em IEEE Transactions on Intelligent Transportation Systems}, vol.~24, no.~12, pp.~14679--14694, 2023.
+
+\bibitem{lyu2020uavid}
+Y.~Lyu, X.~Bai, C.~Liao, {\em et~al.}, ``{UAVid}: A semantic segmentation dataset for {UAV} imagery,'' {\em ISPRS Journal of Photogrammetry and Remote Sensing}, vol.~165, pp.~108--119, 2020.
+
+\bibitem{chiu2020agriculturevision}
+M.-J. Chiu, X.~Xu, Y.~Wang, {\em et~al.}, ``Agriculture-vision: A large aerial image database for agricultural pattern analysis,'' in {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, pp.~2828--2838, 2020.
+
+\bibitem{rizzoli2023syndrone}
+G.~Rizzoli, F.~Poiesi, E.~Ricci, {\em et~al.}, ``{SynDrone}: Multi-modal {UAV} dataset for urban scenarios,'' in {\em Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops}, 2023.
+
+\bibitem{zhang2023uavformer}
+Y.~Zhang, Z.~Chen, H.~Hu, {\em et~al.}, ``{UAVformer}: A composite transformer network for urban scene segmentation of {UAV} images,'' {\em Pattern Recognition}, vol.~138, p.~109406, 2023.
+
+\bibitem{li2022twodsegformer}
+R.~Li, J.~Cao, Q.~Fu, J.~Li, J.~Sun, and T.~Tian, ``{2DSegFormer}: 2-d transformer model for semantic segmentation on aerial images,'' {\em IEEE Transactions on Geoscience and Remote Sensing}, vol.~60, pp.~1--13, 2022.
+
+\bibitem{dosovitskiy2021vit}
+A.~Dosovitskiy, L.~Beyer, A.~Kolesnikov, {\em et~al.}, ``An image is worth 16x16 words: Transformers for image recognition at scale,'' in {\em Proceedings of the International Conference on Learning Representations}, 2021.
+
+\bibitem{he2022mae}
+K.~He, X.~Chen, S.~Xie, Y.~Li, P.~Doll{\'a}r, and R.~Girshick, ``Masked autoencoders are scalable vision learners,'' in {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, pp.~15979--15988, 2022.
+
+\bibitem{liu2022convnext}
+Z.~Liu, H.~Mao, C.-Y. Wu, C.~Feichtenhofer, T.~Darrell, and S.~Xie, ``A {ConvNet} for the 2020s,'' in {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, pp.~11976--11986, 2022.
+
+\bibitem{kirillov2023segmentanything}
+A.~Kirillov, E.~Mintun, N.~Ravi, {\em et~al.}, ``Segment anything,'' in {\em Proceedings of the IEEE/CVF International Conference on Computer Vision}, pp.~4015--4026, 2023.
+
+\bibitem{ravi2025sam2}
+N.~Ravi, V.~Gabeur, Y.-T. Hu, {\em et~al.}, ``{SAM} 2: Segment anything in images and videos,'' in {\em Proceedings of the International Conference on Learning Representations}, 2025.
+
+\bibitem{chen2023vitadapter}
+Z.~Chen, Y.~Duan, W.~Wang, {\em et~al.}, ``Vision transformer adapter for dense predictions,'' in {\em Proceedings of the International Conference on Learning Representations}, 2023.
+
+\bibitem{chen2023samadapter}
+T.~Chen, L.~Zhu, C.~Ding, {\em et~al.}, ``{SAM}-adapter: Adapting segment anything in underperformed scenes,'' in {\em Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops}, pp.~3367--3375, 2023.
+
+\bibitem{chen2024sam2adapter}
+T.~Chen, A.~Lu, L.~Zhu, {\em et~al.}, ``{SAM2}-adapter: Evaluating and adapting segment anything 2 in downstream tasks,'' 2024.
+
+\bibitem{curti2025mmsamadapter}
+I.~Curti, P.~Z. Ramirez, A.~Petrelli, and L.~D. Stefano, ``Multimodal {SAM}-adapter for semantic segmentation,'' {\em IEEE Access}, vol.~13, pp.~160438--160455, 2025.
+
+\bibitem{hu2022lora}
+E.~J. Hu, Y.~Shen, P.~Wallis, {\em et~al.}, ``{LoRA}: Low-rank adaptation of large language models,'' in {\em Proceedings of the International Conference on Learning Representations}, 2022.
+
+\bibitem{zhong2024convlora}
+Z.~Zhong, M.~Cheng, X.~Chen, {\em et~al.}, ``Convolution meets {LoRA}: Parameter efficient finetuning for segment anything model,'' in {\em Proceedings of the International Conference on Learning Representations}, 2024.
+
+\bibitem{xin2024peftsurvey}
+Y.~Xin, J.~Yang, S.~Luo, {\em et~al.}, ``Parameter-efficient finetuning for pre-trained vision models: A survey and benchmark,'' 2024.
+
+\bibitem{liu2023fmb}
+J.~Liu, Z.~Liu, G.~Wu, L.~Ma, R.~Liu, W.~Zhong, Z.~Luo, and X.~Fan, ``Multi-interactive feature learning and a full-time multi-modality benchmark for image fusion and segmentation,'' in {\em Proceedings of the IEEE/CVF International Conference on Computer Vision}, pp.~8081--8090, 2023.
+
+\bibitem{ha2017mfnet}
+Q.~Ha, K.~Watanabe, T.~Karasawa, Y.~Ushiku, and T.~Harada, ``{MFNet}: Towards real-time semantic segmentation for autonomous vehicles with multi-spectral scenes,'' in {\em Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems}, pp.~5108--5115, 2017.
+
+\bibitem{sun2019rtfnet}
+Y.~Sun, W.~Zuo, and M.~Liu, ``{RTFNet}: {RGB}-thermal fusion network for semantic segmentation of urban scenes,'' {\em IEEE Robotics and Automation Letters}, vol.~4, no.~3, pp.~2576--2583, 2019.
+
+\bibitem{valada2020selfsupervised}
+A.~Valada, R.~Mohan, and W.~Burgard, ``Self-supervised model adaptation for multimodal semantic segmentation,'' {\em International Journal of Computer Vision}, vol.~128, no.~5, pp.~1239--1285, 2020.
+
+\bibitem{yan2021nlfnet}
+X.~Yan, K.~Wang, Y.~Huang, {\em et~al.}, ``{NLFNet}: Non-local fusion towards generalized multimodal semantic segmentation across {RGB}-depth, polarization, and thermal images,'' in {\em Proceedings of the IEEE International Conference on Robotics and Biomimetics}, pp.~1748--1753, 2021.
+
+\bibitem{xu2021attentionfusion}
+D.~Xu, H.~Zhao, X.~Kong, {\em et~al.}, ``Attention fusion network for multi-spectral semantic segmentation,'' {\em Pattern Recognition Letters}, vol.~146, pp.~74--80, 2021.
+
+\bibitem{wu2022complementarity}
+Z.~Wu, Y.~Liu, L.~Wang, {\em et~al.}, ``Complementarity-aware cross-modal feature fusion network for {RGB}-t semantic segmentation,'' {\em Pattern Recognition}, vol.~128, p.~108693, 2022.
+
+\bibitem{sun2020realtimefusion}
+Y.~Sun, W.~Zuo, and M.~Liu, ``Real-time fusion network for {RGB}-d semantic segmentation incorporating unexpected obstacle detection for road-driving images,'' {\em IEEE Robotics and Automation Letters}, vol.~5, no.~4, pp.~5558--5565, 2020.
+
+\bibitem{zhou2021gmnet}
+W.~Zhou, S.~Liang, J.~Yang, {\em et~al.}, ``{GMNet}: Graded-feature multilabel-learning network for {RGB}-thermal urban scene semantic segmentation,'' {\em IEEE Transactions on Image Processing}, vol.~30, pp.~7790--7802, 2021.
+
+\bibitem{zhang2023deliver}
+J.~Zhang, R.~Liu, H.~Shi, {\em et~al.}, ``Delivering arbitrary-modal semantic segmentation,'' in {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, pp.~1136--1147, 2023.
+
+\bibitem{wang2022multimodaltoken}
+Y.~Wang, X.~Chen, L.~Cao, W.~Huang, F.~Sun, and Y.~Wang, ``Multimodal token fusion for vision transformers,'' in {\em Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, pp.~12176--12185, 2022.
+
+\bibitem{jia2024geminifusion}
+D.~Jia, J.~Guo, K.~Han, {\em et~al.}, ``{GeminiFusion}: Efficient pixel-wise multimodal fusion for vision transformer,'' in {\em Proceedings of the International Conference on Machine Learning}, pp.~21753--21767, 2024.
+
+\bibitem{li2024roadformer}
+J.~Li, Y.~Zhang, P.~Yun, G.~Zhou, Q.~Chen, and R.~Fan, ``{RoadFormer}: Duplex transformer for {RGB}-normal semantic road scene parsing,'' {\em IEEE Transactions on Intelligent Vehicles}, vol.~9, no.~7, pp.~5163--5172, 2024.
+
+\bibitem{huang2025roadformerplus}
+J.~Huang, J.~Li, N.~Jia, {\em et~al.}, ``{RoadFormer+}: Delivering {RGB}-{X} scene parsing through scale-aware information decoupling and advanced heterogeneous feature fusion,'' {\em IEEE Transactions on Intelligent Vehicles}, vol.~10, no.~5, pp.~3156--3165, 2025.
+
+\bibitem{broedermann2025cafuser}
+T.~Broedermann, C.~Sakaridis, Y.~Fu, and L.~V. Gool, ``{CAFuser}: Condition-aware multimodal fusion for robust semantic perception of driving scenes,'' {\em IEEE Robotics and Automation Letters}, vol.~10, no.~4, pp.~3134--3141, 2025.
+
+\bibitem{zhang2024rssam}
+E.~Zhang, J.~Liu, A.~Cao, Z.~Sun, H.~Zhang, H.~Wang, L.~Sun, and M.~Song, ``{RS}-{SAM}: Integrating multi-scale information for enhanced remote sensing image segmentation,'' in {\em Proceedings of the Asian Conference on Computer Vision}, 2024.
+
+\bibitem{chen2025multiscaleadapter}
+S.~Chen, Y.~Yu, Y.~Li, Z.~Wang, X.~Li, and J.~Han, ``Multiscale adapter based on {SAM} for remote sensing semantic segmentation,'' {\em IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing}, vol.~18, pp.~6806--6824, 2025.
+
+\bibitem{li2025sam2former}
+X.~Li, X.~Tian, Z.~Wang, F.~Zhang, Y.~Zhang, N.~Yang, and C.~Tian, ``{SAM2Former}: Segment anything model 2 assisting {UNet}-like transformer for remote sensing image semantic segmentation,'' {\em IEEE Access}, vol.~13, pp.~119212--119229, 2025.
+
+\bibitem{reza2024mmsformer}
+M.~K. Reza, A.~Prater-Bennette, and M.~S. Asif, ``{MMSFormer}: Multimodal transformer for material and semantic segmentation,'' {\em IEEE Open Journal of Signal Processing}, vol.~5, pp.~599--610, 2024.
+
+\bibitem{li2024stitchfusion}
+B.~Li, D.~Zhang, Z.~Zhao, J.~Gao, and X.~Li, ``{StitchFusion}: Weaving any visual modalities to enhance multimodal semantic segmentation,'' 2024.
+
+\bibitem{zhou2022egfnet}
+W.~Zhou, S.~Dong, C.~Xu, and Y.~Qian, ``{EGFNet}: Edge-aware guidance fusion network for {RGB}-thermal scene parsing,'' in {\em Proceedings of the AAAI Conference on Artificial Intelligence}, vol.~36, pp.~3571--3579, 2022.
+
+\bibitem{shin2023crm}
+U.~Shin, K.~Lee, I.~S. Kweon, and J.~Oh, ``Complementary random masking for {RGB}-thermal semantic segmentation,'' 2023.
+
+\end{thebibliography}
