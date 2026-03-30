@@ -4,6 +4,14 @@ last_updated: "2026-03-30"
 strategy_shift:
   from: "FMB 全监督结构卷分"
   to: "标签效率（半监督/弱监督）+ 模态鲁棒性 + 跨数据集证据"
+active_docs:
+  - "research_workspace/notes/ACTIVE_CONTEXT.md"
+  - "research_workspace/plans/current_plan.yaml"
+  - "research_workspace/plans/LABEL_EFFICIENT_RS_PLAN_2026-03-30.md"
+  - "research_workspace/plans/PUBLICATION_STRATEGY_2026-03-30.md"
+  - "research_workspace/notes/DECISIONS.md"
+  - "research_workspace/notes/SESSION_HANDOFF.md"
+archive_path: "research_workspace/archive/legacy_2026-03-30_focus_shift/"
 milestones:
   - id: M0
     title: "完成研究问题重定义与主线切换"

@@ -32,10 +32,10 @@
 ## 建议工作流
 
 1. 新会话开始先读取：
-   - `docs/RESEARCH_WORKFLOW.md`
+   - `research_workspace/notes/ACTIVE_CONTEXT.md`
    - `research_workspace/plans/current_plan.yaml`
+   - `research_workspace/notes/DECISIONS.md`
    - `research_workspace/notes/SESSION_HANDOFF.md`
-   - 本轮最相关调研文档
 2. 研究推进中：
    - 长期判断写入 `notes/DECISIONS.md`
    - 阶段总结写入 `notes/`
@@ -47,3 +47,8 @@
    - 配置：`research_workspace/plans/auto_loop_config.json`
    - dry-run：`python scripts/auto_train_eval_loop.py --dry-run`
    - 执行：`python scripts/auto_train_eval_loop.py --execute --max-cycles 3`
+
+## 旧文档归档
+
+- 为提高信息密度，旧阶段文档已迁移至：
+  - `research_workspace/archive/legacy_2026-03-30_focus_shift/`

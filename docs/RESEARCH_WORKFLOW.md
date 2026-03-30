@@ -22,10 +22,10 @@
 
 ## 新会话开始时应读取
 
-1. `docs/RESEARCH_WORKFLOW.md`
+1. `research_workspace/notes/ACTIVE_CONTEXT.md`
 2. `research_workspace/plans/current_plan.yaml`
 3. `research_workspace/notes/SESSION_HANDOFF.md`
-4. 当前阶段最相关调研笔记
+4. `research_workspace/notes/DECISIONS.md`
 
 ## 工作过程中应维护
 
@@ -110,3 +110,8 @@ python scripts/staged_funnel_loop.py --config research_workspace/plans/staged_fu
 2. 论文主结论只用 strict 口径；present-only 仅作补充说明。
 3. 优先控制方法复杂度，避免再次走向模块堆叠。
 4. 文档默认使用中文。
+
+## 旧阶段归档
+
+- 旧阶段文档统一放置于：
+  - `research_workspace/archive/legacy_2026-03-30_focus_shift/`
