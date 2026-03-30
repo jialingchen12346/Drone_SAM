@@ -23,23 +23,21 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from segmentation.datasets.fmb_dataset import FMBDataset, NUM_CLASSES, IGNORE_INDEX, CLASSES
+from segmentation.models.segmentors.cacaf_segmentor import CACafSegmentor
+from segmentation.models.segmentors.mmsa_baseline_segmentor import MMSABaselineSegmentor
 from segmentation.models.segmentors.rrf_dsd_segmentor import RRFDSDSegmentor
 
 
 # IoU metric（复用训练脚本中的实现）
 class SegMetric:
-    def __init__(self, num_classes, ignore_index=255, absent_score=None):
+    def __init__(self, num_classes, ignore_index=255):
         """
         Args:
             num_classes: 类别数量
             ignore_index: 忽略索引（默认 255）
-            absent_score: 对测试集中未出现的类别的处理方式
-                - None: 忽略（不计入 mIoU，默认）
-                - 0.0: 计为 0 IoU
         """
         self.num_classes = num_classes
         self.ignore_index = ignore_index
-        self.absent_score = absent_score
         self.confusion = np.zeros((num_classes, num_classes), dtype=np.int64)
 
     def update(self, pred: np.ndarray, gt: np.ndarray):
@@ -50,7 +48,7 @@ class SegMetric:
         valid = (pred >= 0) & (pred < self.num_classes)
         np.add.at(self.confusion.ravel(), idx[valid], 1)
 
-    def compute(self):
+    def compute(self, absent_score=None):
         cm = self.confusion
         tp = np.diag(cm)
         gt_sum = cm.sum(axis=1)
@@ -66,12 +64,12 @@ class SegMetric:
         acc = np.where(gt_sum > 0, tp / gt_sum, np.nan)
 
         # 处理未出现的类别
-        if self.absent_score is not None:
-            iou[absent_classes] = self.absent_score
-            acc[absent_classes] = self.absent_score
+        if absent_score is not None:
+            iou[absent_classes] = absent_score
+            acc[absent_classes] = absent_score
 
         # 计算 mIoU/mAcc
-        if self.absent_score is None:
+        if absent_score is None:
             # 忽略未出现的类别
             miou = float(np.nanmean(iou) * 100)
             macc = float(np.nanmean(acc) * 100)
@@ -96,6 +94,12 @@ class SegMetric:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RRF-DSD testing on FMB")
+    parser.add_argument(
+        "--model-variant",
+        default="rrf_dsd",
+        choices=["rrf_dsd", "cacaf", "mmsa_baseline"],
+        help="Model variant to evaluate",
+    )
     parser.add_argument("--checkpoint", required=True, help="Path to checkpoint")
     parser.add_argument("--data-root", default="/root/autodl-tmp/datasets/FMB")
     parser.add_argument("--split", default="test", choices=["val", "test"],
@@ -121,10 +125,6 @@ def parse_args():
                         help="Comma-separated rare class indices (0-based)")
     parser.add_argument("--rare-class-scale", type=float, default=1.0,
                         help="Rare-class residual scale (must match training)")
-    parser.add_argument(
-        "--absent-score", type=float, default=None,
-        help="Score for absent classes (None=ignore, 0.0=count as 0)"
-    )
     return parser.parse_args()
 
 
@@ -140,6 +140,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     split_cn = "验证" if args.split == "val" else "测试"
 
+    print(f"[config] model_variant: {args.model_variant}")
     print(f"[config] checkpoint: {args.checkpoint}")
     print(f"[config] data_root: {args.data_root}")
     print(f"[config] split: {args.split}")
@@ -148,18 +149,33 @@ def main():
 
     # 加载模型
     print("\n[load] 构建模型...")
-    model = RRFDSDSegmentor(
-        num_classes=NUM_CLASSES,
-        sam2_checkpoint=args.sam2_ckpt,
-        sam2_config=args.sam2_cfg,
-        use_thin_structure_refiner=args.use_thin_structure_refiner,
-        thin_refiner_scale=args.thin_refiner_scale,
-        use_boundary_refiner=args.use_boundary_refiner,
-        boundary_refiner_scale=args.boundary_refiner_scale,
-        use_rare_class_residual=args.use_rare_class_residual,
-        rare_class_indices=rare_class_indices,
-        rare_class_scale=args.rare_class_scale,
-    ).to(device)
+    if args.model_variant == "rrf_dsd":
+        model = RRFDSDSegmentor(
+            num_classes=NUM_CLASSES,
+            sam2_checkpoint=args.sam2_ckpt,
+            sam2_config=args.sam2_cfg,
+            use_thin_structure_refiner=args.use_thin_structure_refiner,
+            thin_refiner_scale=args.thin_refiner_scale,
+            use_boundary_refiner=args.use_boundary_refiner,
+            boundary_refiner_scale=args.boundary_refiner_scale,
+            use_rare_class_residual=args.use_rare_class_residual,
+            rare_class_indices=rare_class_indices,
+            rare_class_scale=args.rare_class_scale,
+        ).to(device)
+    elif args.model_variant == "cacaf":
+        model = CACafSegmentor(
+            num_classes=NUM_CLASSES,
+            sam2_checkpoint=args.sam2_ckpt,
+            sam2_config=args.sam2_cfg,
+            use_cacaf=True,
+            use_sagu=True,
+        ).to(device)
+    else:
+        model = MMSABaselineSegmentor(
+            num_classes=NUM_CLASSES,
+            sam2_checkpoint=args.sam2_ckpt,
+            sam2_config=args.sam2_cfg,
+        ).to(device)
 
     # 加载 checkpoint
     print(f"[load] 加载权重: {args.checkpoint}")
@@ -183,7 +199,7 @@ def main():
     print(f"[data] {split_cn}集样本数: {len(eval_ds)}")
 
     # 测试循环
-    metric = SegMetric(NUM_CLASSES, IGNORE_INDEX, absent_score=args.absent_score)
+    metric = SegMetric(NUM_CLASSES, IGNORE_INDEX)
     amp_dtype = torch.bfloat16 if args.bf16 else torch.float16
 
     print(f"\n[eval] 开始评估（{args.split}）...")
@@ -213,35 +229,46 @@ def main():
     print(f"\n[eval] 完成，耗时: {elapsed:.1f}s")
 
     # 计算指标
-    results = metric.compute()
+    results_present = metric.compute(absent_score=None)
+    results_strict = metric.compute(absent_score=0.0)
     print("\n" + "=" * 60)
-    print(f"{split_cn}集 mIoU:  {results['mIoU']:.2f}")
-    print(f"{split_cn}集 mAcc:  {results['mAcc']:.2f}")
-    print(f"{split_cn}集 aAcc:  {results['aAcc']:.2f}")
-    print(f"有效类别数:  {results['num_valid']}/{NUM_CLASSES}")
+    print(f"{split_cn}集 present-only mIoU:  {results_present['mIoU']:.2f}")
+    print(f"{split_cn}集 present-only mAcc:  {results_present['mAcc']:.2f}")
+    print(f"{split_cn}集 strict(absent=0) mIoU:  {results_strict['mIoU']:.2f}")
+    print(f"{split_cn}集 strict(absent=0) mAcc:  {results_strict['mAcc']:.2f}")
+    print(f"{split_cn}集 aAcc:  {results_present['aAcc']:.2f}")
+    print(f"有效类别数:  {results_present['num_valid']}/{NUM_CLASSES}")
     print("=" * 60)
 
-    print("\n各类别 IoU:")
-    for i, (cls, iou) in enumerate(zip(CLASSES, results["iou_per_class"])):
-        marker = " [absent]" if i in results["absent_classes"] else ""
+    print("\n各类别 IoU (present-only):")
+    for i, (cls, iou) in enumerate(zip(CLASSES, results_present["iou_per_class"])):
+        marker = " [absent]" if i in results_present["absent_classes"] else ""
         print(f"  {cls:16s}: {iou:.1f}{marker}")
 
-    if results["absent_classes"]:
-        print(f"\n未出现的类别: {[CLASSES[i] for i in results['absent_classes']]}")
+    if results_present["absent_classes"]:
+        print(f"\n未出现的类别: {[CLASSES[i] for i in results_present['absent_classes']]}")
 
-    # 保存结果
+    # 保存结果（统一输出双口径）
     out_dir = osp.dirname(args.checkpoint)
     result_file = osp.join(out_dir, f"{args.split}_results.txt")
     with open(result_file, "w") as f:
+        f.write(f"model_variant: {args.model_variant}\n")
         f.write(f"checkpoint: {args.checkpoint}\n")
         f.write(f"split: {args.split}\n")
-        f.write(f"mIoU: {results['mIoU']:.2f}\n")
-        f.write(f"mAcc: {results['mAcc']:.2f}\n")
-        f.write(f"aAcc: {results['aAcc']:.2f}\n")
-        f.write(f"valid_classes: {results['num_valid']}/{NUM_CLASSES}\n")
-        f.write(f"absent_classes: {[CLASSES[i] for i in results['absent_classes']]}\n")
-        f.write("\nPer-class IoU:\n")
-        for cls, iou in zip(CLASSES, results["iou_per_class"]):
+        f.write(f"present_mIoU: {results_present['mIoU']:.2f}\n")
+        f.write(f"present_mAcc: {results_present['mAcc']:.2f}\n")
+        f.write(f"strict_mIoU: {results_strict['mIoU']:.2f}\n")
+        f.write(f"strict_mAcc: {results_strict['mAcc']:.2f}\n")
+        f.write(f"aAcc: {results_present['aAcc']:.2f}\n")
+        f.write(f"valid_classes: {results_present['num_valid']}/{NUM_CLASSES}\n")
+        f.write(
+            f"absent_classes: {[CLASSES[i] for i in results_present['absent_classes']]}\n"
+        )
+        f.write("\nPer-class IoU (present-only):\n")
+        for cls, iou in zip(CLASSES, results_present["iou_per_class"]):
+            f.write(f"  {cls}: {iou:.1f}\n")
+        f.write("\nPer-class IoU (strict absent=0):\n")
+        for cls, iou in zip(CLASSES, results_strict["iou_per_class"]):
             f.write(f"  {cls}: {iou:.1f}\n")
     print(f"\n[result] 结果已保存到: {result_file}")
 

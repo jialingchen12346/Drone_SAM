@@ -1,37 +1,66 @@
 # 长周期研究工作流
 
-本项目已经完成一次旧研究周期，相关材料已归档到：
+本项目已完成一次旧研究周期，旧材料统一归档在：
 
 - `archive/legacy_2026-03-23/`
 
-当前阶段以“重新设计模型结构并启动新研究”为主，因此工作流也重置为更干净的中文版本。
+自 **2026-03-30** 起，研究主线升级为：
+
+- `标签效率导向的遥感/无人机语义分割`
+- 核心方向：`半监督 + 弱监督 + 模态鲁棒性`
 
 ## 当前保留内容
 
 - `segmentation/`
   训练、评估、模型实现与基础框架。
 - `sam2/`
-  SAM2 相关代码与配置。
+  SAM/SAM2 相关代码与配置。
 - `docs/`
-  当前仅保留数据集说明和本工作流文档。
+  数据集与工作流文档。
 - `research_workspace/`
-  新研究周期的状态管理目录。
+  状态管理、计划、证据链与交接记录。
 
 ## 新会话开始时应读取
 
 1. `docs/RESEARCH_WORKFLOW.md`
 2. `research_workspace/plans/current_plan.yaml`
 3. `research_workspace/notes/SESSION_HANDOFF.md`
-4. 与当前任务最相关的研究笔记
+4. 当前阶段最相关调研笔记
 
 ## 工作过程中应维护
 
 - `research_workspace/notes/DECISIONS.md`
   记录应跨会话保留的关键判断。
 - `research_workspace/notes/`
-  保存调研、方案设计、实验解释等高价值文本。
+  保存调研、方案设计、实验解释、失败复盘。
 - `research_workspace/plans/current_plan.yaml`
-  维护当前目标、进行中任务和下一个动作。
+  维护目标、里程碑、任务与近期动作。
+
+## 新主线执行框架
+
+### 阶段 A：协议重建（必须先完成）
+
+1. 统一评测口径（主表 strict，`--absent-score 0.0`）。
+2. 固化 label ratio 划分（如 `1/2/5/10/20/50%`）。
+3. 固化弱监督生成脚本（point/scribble）。
+
+### 阶段 B：半监督主线
+
+1. 训练范式：`L% 标注 + U% 无标注`。
+2. 核心机制：伪标签筛选 + 可靠性加权 + 一致性训练。
+3. 输出：label efficiency 曲线、稳定性统计、成本统计。
+
+### 阶段 C：弱监督扩展
+
+1. 监督信号：point/scribble（先点后线）。
+2. 融合策略：弱监督损失与半监督伪标签协同。
+3. 输出：弱监督增益、标注成本对比、失败模式分析。
+
+### 阶段 D：跨数据集证据
+
+1. 短期主场：FMB。
+2. 中期扩展：LoveDA / ISPRS / UAVid（按资源逐步引入）。
+3. 输出：跨域泛化与鲁棒性证据，支撑 BMVC/ACCV 稿件。
 
 ## 本地检索与汇总工具
 
@@ -44,9 +73,9 @@ python scripts/index_workspace.py build
 ### 搜索工作区
 
 ```bash
-python scripts/index_workspace.py search "区域级可靠性融合"
-python scripts/index_workspace.py search "细节语义解耦解码器"
-python scripts/index_workspace.py search "模态 masking 鲁棒训练"
+python scripts/index_workspace.py search "半监督 遥感 伪标签"
+python scripts/index_workspace.py search "弱监督 点标注 语义分割"
+python scripts/index_workspace.py search "模态退化 鲁棒性"
 ```
 
 ### 汇总实验结果
@@ -60,33 +89,24 @@ python scripts/summarize_experiments.py
 - `research_workspace/experiments/summary/experiment_summary.csv`
 - `research_workspace/experiments/summary/experiment_summary.md`
 
-## 分阶段实验自动化（推荐）
+## 自动化执行建议
 
-当前默认策略为 `12/20/30` 三段式漏斗：
+在新主线仍可复用 `12/20/30` 漏斗思想，但门控指标改为：
 
-- `S1`：12 轮快筛（保留 Top-3）
-- `S2`：20 轮复筛（保留 Top-2）
-- `S3`：30 轮确认（保留 Top-1，strict 口径）
+1. `strict mIoU`（主指标）
+2. `label efficiency`（相同 mIoU 所需标注比例）
+3. `robustness drop`（退化条件下跌幅）
 
-执行：
-
-```bash
-python scripts/staged_funnel_loop.py \
-  --config research_workspace/plans/staged_funnel_strategy.json \
-  --execute
-```
-
-预演：
+执行命令可继续使用：
 
 ```bash
-python scripts/staged_funnel_loop.py \
-  --config research_workspace/plans/staged_funnel_strategy.json \
-  --dry-run
+python scripts/staged_funnel_loop.py --config research_workspace/plans/staged_funnel_strategy.json --dry-run
+python scripts/staged_funnel_loop.py --config research_workspace/plans/staged_funnel_strategy.json --execute
 ```
 
 ## 当前研究约束
 
-1. 旧的 `68.62 > 66.10` 主张不再作为严格对比结论。
-2. 新研究应首先统一评测口径，再启动重训。
-3. 第一轮新模型尽量保留 encoder，不扩大重写范围。
+1. 不再以“纯 FMB 全监督单点提分”作为主目标。
+2. 论文主结论只用 strict 口径；present-only 仅作补充说明。
+3. 优先控制方法复杂度，避免再次走向模块堆叠。
 4. 文档默认使用中文。

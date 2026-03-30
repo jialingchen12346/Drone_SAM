@@ -362,3 +362,30 @@
   - `.../test_results_strict_abs0_reval_20260325.txt`
 - 已完成本地归档文档：
   - `research_workspace/notes/MODEL_ATTEMPT_ARCHIVE_2026-03-25.md`
+
+## 最新状态（2026-03-30）
+
+- 研究主线已从“FMB 全监督卷分”切换为“标签效率导向（半监督 + 弱监督）”。
+- 计划文档已更新：
+  - research_workspace/plans/current_plan.yaml（重写为新里程碑与任务依赖）
+  - research_workspace/plans/LABEL_EFFICIENT_RS_PLAN_2026-03-30.md（新增执行蓝图）
+  - docs/RESEARCH_WORKFLOW.md（更新为新流程与阶段定义）
+  - research_workspace/README.md（更新工作区说明与新原则）
+- 口径红线保持不变：论文主结论仍以 strict(absent=0) 为准。
+- 数据集策略调整为“FMB 短期主实验 + 遥感公开集补证据”。
+
+## 下一步动作（交接后直接执行）
+
+1. 完成协议脚本：
+   - 固化 label ratio（1/2/5/10/20/50%）样本划分与随机种子。
+   - 生成 point 弱标注并对齐评测映射。
+2. 建立半监督训练最小闭环：
+   - teacher-student + 伪标签刷新 + 一致性损失。
+   - 先在 FMB 10% 标注预算上跑通。
+3. 增加可靠性筛选：
+   - 引入模态质量/不确定性权重。
+   - 输出过滤前后伪标签质量对比。
+4. 完成首轮门控评估：
+   - 相对监督基线至少达到 +1.0 mIoU 或关键类均值 +1.5。
+   - 连续 3 组无增益则回滚复杂模块。
+5. 选定 1 个遥感数据集做补充实验准备（优先 LoveDA 或 UAVid）。

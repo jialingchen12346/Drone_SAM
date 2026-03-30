@@ -1,0 +1,205 @@
+objective: "面向 CCF-C 会议投稿，完成可复现的 RGB-T 语义分割方法、实验与论文材料"
+status: active
+last_updated: "2026-03-25"
+milestones:
+  - id: M1
+    title: "完成项目清理与中文工作区重建"
+    status: completed
+  - id: M2
+    title: "确定第一版新模型结构"
+    status: completed
+  - id: M3
+    title: "实现并训练第一版原型"
+    status: completed
+  - id: M4
+    title: "缩小 val-test 泛化差距并稳定测试集表现"
+    status: in_progress
+  - id: M5
+    title: "建立自动化实验闭环（训练-评测-反馈）"
+    status: completed
+  - id: M6
+    title: "完成 CCF-C 投稿所需论文包（图表、消融、复现说明）"
+    status: pending
+  - id: M7
+    title: "完成 PRCV 2026 主投稿并准备 BMVC/ACCV 备投版本"
+    status: in_progress
+tasks:
+  - id: T1
+    title: "确认 fusion 模块的最小实现方案"
+    status: completed
+    owner: codex
+    depends_on: []
+  - id: T2
+    title: "确认 decoder 模块的最小实现方案"
+    status: completed
+    owner: codex
+    depends_on: []
+  - id: T3
+    title: "创建新的研究启动说明与约束文档"
+    status: completed
+    owner: codex
+    depends_on: []
+  - id: T4
+    title: "实现第一版 fusion / decoder / segmentor 骨架"
+    status: completed
+    owner: codex
+    depends_on: [T1, T2, T3]
+  - id: T5
+    title: "准备第一轮受控训练实验"
+    status: completed
+    owner: codex
+    depends_on: [T4]
+  - id: T6
+    title: "完成 RRF-DSD v2 训练与 val/test 评测口径统一"
+    status: completed
+    owner: codex
+    depends_on: [T5]
+  - id: T7
+    title: "针对 val-test gap 开展泛化优先实验"
+    status: in_progress
+    owner: codex
+    depends_on: [T6]
+  - id: T8
+    title: "修复 2x5090 上 NCCL 兼容并恢复双卡 NCCL 训练路径"
+    status: completed
+    owner: codex
+    depends_on: [T7]
+  - id: T9
+    title: "完成 best.pth 与 epoch_80.pth 的 test 对照并确定 checkpoint 选择策略"
+    status: completed
+    owner: codex
+    depends_on: [T7]
+  - id: T10
+    title: "实现自动训练-评测-反馈循环脚本与配置"
+    status: completed
+    owner: codex
+    depends_on: [T9]
+  - id: T11
+    title: "实现技能自动路由（阶段->技能）"
+    status: completed
+    owner: codex
+    depends_on: [T10]
+  - id: T12
+    title: "执行至少 3 轮自动实验并生成 leaderboard"
+    status: completed
+    owner: codex
+    depends_on: [T10]
+  - id: T13
+    title: "完成关键消融（loss/采样/aux/增强）与误差分析图表"
+    status: in_progress
+    owner: codex
+    depends_on: [T12]
+  - id: T15
+    title: "验证 batch-size=8 吞吐优化对 GPU 利用率与训练稳定性的影响"
+    status: completed
+    owner: codex
+    depends_on: [T13]
+  - id: T16
+    title: "在 OHEM-only + batch=8 主线下回补 Sidewalk/Traffic Light/Pole 类别表现"
+    status: in_progress
+    owner: codex
+    depends_on: [T15]
+  - id: T17
+    title: "完成 RRF-DSD 结构重研并落地 V3 原型（细结构补偿分支）"
+    status: in_progress
+    owner: codex
+    depends_on: [T16]
+  - id: T14
+    title: "整理投稿初稿（方法、实验、复现细节、威胁与局限）"
+    status: pending
+    owner: codex
+    depends_on: [T13]
+  - id: T18
+    title: "按 PRCV 2026 截止倒排完成论文提交包（截止 2026-04-15）"
+    status: in_progress
+    owner: codex
+    depends_on: [T13, T14]
+  - id: T19
+    title: "构建 BMVC/ACCV 备投分支（基于同一方法主线，增补消融与分析）"
+    status: in_progress
+    owner: codex
+    depends_on: [T18]
+  - id: T20
+    title: "完成 SHIFNet 可比性声明与公平口径对照实验（统一指标+成本报告）"
+    status: in_progress
+    owner: codex
+    depends_on: [T13]
+  - id: T21
+    title: "启动 V4 结构重构（长尾类与细结构优先），以投稿新颖性为主线"
+    status: in_progress
+    owner: codex
+    depends_on: [T17]
+  - id: T22
+    title: "落地 12/20/30 三段式漏斗自动化（脚本+配置+门控阈值）"
+    status: completed
+    owner: codex
+    depends_on: [T21]
+  - id: T23
+    title: "执行 S1 12 轮快筛并产出 Top-3 候选"
+    status: completed
+    owner: codex
+    depends_on: [T22]
+  - id: T24
+    title: "执行 S2 20 轮复筛 + S3 30 轮确认并形成 strict 主结果"
+    status: completed
+    owner: codex
+    depends_on: [T23]
+  - id: T25
+    title: "基于漏斗结果进入 V4-2 结构重设，并执行短周期筛选后再长训确认"
+    status: in_progress
+    owner: codex
+    depends_on: [T24]
+  - id: T26
+    title: "完成 legacy_2026-03-23 失败复盘并固化 strict 评测红线"
+    status: completed
+    owner: codex
+    depends_on: [T25]
+  - id: T27
+    title: "以 mmsa_baseline 为新基线执行 strict 导向的结构迭代与双 split 验证"
+    status: in_progress
+    owner: codex
+    depends_on: [T26]
+notes:
+  - "旧研究材料位于 archive/legacy_2026-03-23/"
+  - "文档统一使用中文"
+  - "第一轮不扩大 backbone 重写范围"
+  - "RRF-DSD v2 完整训练已完成：best val mIoU=70.57"
+  - "test 对照已完成：epoch_80.pth mIoU=65.24 > best.pth mIoU=64.68（split=test）"
+  - "test split 中 Bicycle 缺失，评测脚本已显式标注 absent class"
+  - "新环境 torch211（torch2.11/NCCL2.28）已通过 full preflight，并用于正式双卡训练"
+  - "远程系统盘清理完成：/ 使用率 95% -> 47%，当前训练可继续稳定落盘"
+  - "自动化闭环脚本：scripts/auto_train_eval_loop.py，配置：research_workspace/plans/auto_loop_config.json"
+  - "技能路由脚本：scripts/skill_router.py"
+  - "自动化闭环 3 轮已完成：test mIoU 分别为 64.62 / 65.32 / 64.58"
+  - "自动化闭环 5 轮 done：当前最优 gen_ohem_only_cmr060_aux010_bs8_r1（test mIoU=66.36）"
+  - "第三轮 strong_aug 配置出现 val-test gap 扩大（69.61 vs 64.58，gap=5.03）"
+  - "吞吐优化已配置：batch-size=8、num-workers=12、--no-ddp-find-unused-params（下一轮生效）"
+  - "batch-size=8 相对旧 OHEM-only 轮次速度约提升 2.13x（1550.5s -> 728.3s），test mIoU +1.04"
+  - "batch-size=12 试验已启动：gen_ohem_only_cmr060_aux010_bs12_r1（训练进行中，显存约 26.8GB/卡，GPU 利用率约 96%）"
+  - "结构重研文档：research_workspace/notes/ARCH_REDESIGN_RESEARCH_2026-03-24.md（V3: TSCB/CBR/DRLR）"
+  - "batch-size=12 轮次已完成：test mIoU=65.95（低于 bs8 最优 66.36），但吞吐保持高位"
+  - "TSCB 结构实验已启动（auto-loop 单轮）：将验证是否回补 Sidewalk/TrafficLight/Pole"
+  - "发文指导思想已固化：research_workspace/plans/PUBLICATION_STRATEGY_2026-03-24.md"
+  - "发文策略证据清单：research_workspace/notes/PUBLICATION_STRATEGY_EVIDENCE_2026-03-24.md（含 CCF 第七版与会议官方截止日期）"
+  - "投稿级联：PRCV 2026 (2026-04-15) -> BMVC 2026 (2026-05-22) -> ACCV 2026 (2026-07-05)"
+  - "心跳自动清理已升级：保留活跃目录 + Top-N best.pth，其余历史轮次 checkpoint 自动清理"
+  - "磁盘策略升级为双阈值：MIN_FREE_GB=10, TARGET_FREE_GB=12；已实测 8G -> 16G"
+  - "后续 auto-loop 训练目录切换到数据盘：/root/autodl-tmp/work_dirs/auto_loop（50G）"
+  - "发表门槛调研：research_workspace/notes/PUBLISHING_SCORE_GATE_RESEARCH_2026-03-24.md（建议稳妥线 FMB test mIoU >=66.8）"
+  - "SHIFNet 对标与论文叙事草案：research_workspace/notes/SHIFNET_COMPARABILITY_STORY_2026-03-24.md"
+  - "严格口径试验线（absent=0）已启动后中止：R4 跑完 2/4，当前 strict 最优 test mIoU=62.77；已停止继续消耗算力，转入 V4 结构重构阶段"
+  - "三段式漏斗策略已落地：plans/staged_funnel_strategy.json + scripts/staged_funnel_loop.py + plans/STAGED_FUNNEL_PLAN_2026-03-24.md"
+  - "阶段门控：S1=12轮取Top-3，S2=20轮取Top-2，S3=30轮取Top-1（全程 strict absent=0）"
+  - "当前锚点训练已重启：r5_ohem_only_bs8_cmr056_aux010_seed42_e30_20260324_190618（log 在 /tmp）"
+  - "三段式漏斗已完整执行：S1(12) -> S2(20) -> S3(30)，strict best test mIoU=62.23，S3 触发止损结束"
+  - "远程数据盘已再次激进清理：/root/autodl-tmp 使用率 97% -> 19%，可用空间约 41G"
+  - "当前保留关键资产：staged_funnel S3 主 run（best+epoch_30+val/test）与 auto_loop 最优 run（test=67.67）"
+  - "V4-2 新漏斗已启动：plans/staged_funnel_v42_strategy.json（S1 正在执行，日志 /tmp/staged_funnel_v42_20260324_205511.log）"
+  - "2026-03-25 快速重评已完成：gen_ohem_only_bs8_cmr056_aux010_r3 从 67.67（present-only）重评为 62.84（strict abs0）"
+  - "模型尝试结果归档文档：research_workspace/notes/MODEL_ATTEMPT_ARCHIVE_2026-03-25.md"
+  - "V5 结构改动已落地（Boundary-Guided Refiner + Rare-Class Residual），并启动 12 epoch 快筛：plans/quick_screen_v5_sam21_e12_2026-03-25.json"
+  - "V5 首轮快筛已完成：strict val/test=56.35/55.81（明显低于当前 strict 锚点），该组合不晋级长训"
+  - "V5 单变量定位完成：baseline=55.61，boundary-only=54.48，rare-only=54.69；两分支均低于同预算 baseline，V5 路线阶段判退"
+  - "旧工作文档已完成系统复盘：research_workspace/notes/LEGACY_WORK_REVIEW_2026-03-25.md（明确可继承资产与口径冲突项）"
+  - "旧路线失败复盘已完成：research_workspace/notes/LEGACY_POSTMORTEM_2026-03-25.md（根因与纠偏动作已固化）"
+  - "后续论文主表只使用 strict(absent=0) 结果；present-only 仅用于补充分析，不进入主结论"
