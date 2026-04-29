@@ -146,6 +146,24 @@ class ModalityQualityWeight(nn.Module):
         return weights
 
 
+class AgreementGuidedGate(nn.Module):
+    """Predict a spatial RGB/Thermal fusion gate from features + agreement."""
+
+    def __init__(self, channels):
+        super().__init__()
+        hidden = max(channels // 2, 32)
+        self.net = nn.Sequential(
+            nn.Conv2d(channels * 2 + 1, hidden, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(hidden),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden, 1, kernel_size=1),
+        )
+
+    def forward(self, rgb_feat, aux_feat, agreement_map):
+        gate_in = torch.cat([rgb_feat, aux_feat, agreement_map], dim=1)
+        return torch.sigmoid(self.net(gate_in))
+
+
 class MMSAFusionBlock(nn.Module):
     """Single-scale fusion block."""
 
@@ -157,9 +175,11 @@ class MMSAFusionBlock(nn.Module):
         num_heads=4,
         max_tokens=1024,
         enable_interaction=True,
+        use_agreement_gate=False,
     ):
         super().__init__()
         self.enable_interaction = enable_interaction
+        self.use_agreement_gate = use_agreement_gate
 
         self.align_rgb = ConvBNReLU(rgb_channels, out_channels, kernel_size=1)
         self.align_aux = ConvBNReLU(aux_channels, out_channels, kernel_size=1)
@@ -172,13 +192,14 @@ class MMSAFusionBlock(nn.Module):
         else:
             self.interaction = None
 
-        self.quality = ModalityQualityWeight(out_channels)
+        self.quality = None if use_agreement_gate else ModalityQualityWeight(out_channels)
+        self.agreement_gate = AgreementGuidedGate(out_channels) if use_agreement_gate else None
         self.post_refine = nn.Sequential(
             ConvBNReLU(out_channels, out_channels, kernel_size=3),
             ConvBNReLU(out_channels, out_channels, kernel_size=3),
         )
 
-    def forward(self, rgb_feat, aux_feat):
+    def forward(self, rgb_feat, aux_feat, agreement_map=None):
         rgb = self.align_rgb(rgb_feat)
         aux = self.align_aux(aux_feat)
 
@@ -188,13 +209,42 @@ class MMSAFusionBlock(nn.Module):
         if self.interaction is not None:
             rgb, aux = self.interaction(rgb, aux)
 
-        weights = self.quality(rgb, aux)  # [B, 2]
-        rgb_w = weights[:, 0:1].unsqueeze(-1).unsqueeze(-1)
-        aux_w = weights[:, 1:2].unsqueeze(-1).unsqueeze(-1)
+        if self.agreement_gate is not None and agreement_map is not None:
+            agreement_resized = F.interpolate(
+                agreement_map, size=rgb.shape[2:], mode="bilinear", align_corners=True
+            )
+            rgb_w = self.agreement_gate(rgb, aux, agreement_resized)
+            aux_w = 1.0 - rgb_w
+            pooled_rgb = rgb_w.mean(dim=(2, 3))
+            pooled_aux = aux_w.mean(dim=(2, 3))
+            weights = torch.cat([pooled_rgb, pooled_aux], dim=1)
+        else:
+            if self.quality is None:
+                raise RuntimeError("quality branch is unavailable when use_agreement_gate=True")
+            weights = self.quality(rgb, aux)  # [B, 2]
+            rgb_w = weights[:, 0:1].unsqueeze(-1).unsqueeze(-1)
+            aux_w = weights[:, 1:2].unsqueeze(-1).unsqueeze(-1)
 
         fused = rgb_w * rgb + aux_w * aux
         fused = self.post_refine(fused)
         return fused, weights.detach()
+
+
+class NaiveFusionBlock(nn.Module):
+    """Channel-align both modalities and fuse them with a fixed 0.5/0.5 average."""
+
+    def __init__(self, rgb_channels, aux_channels, out_channels):
+        super().__init__()
+        self.align_rgb = ConvBNReLU(rgb_channels, out_channels, kernel_size=1)
+        self.align_aux = ConvBNReLU(aux_channels, out_channels, kernel_size=1)
+
+    def forward(self, rgb_feat, aux_feat, agreement_map=None):
+        del agreement_map
+        rgb = self.align_rgb(rgb_feat)
+        aux = self.align_aux(aux_feat)
+        fused = 0.5 * (rgb + aux)
+        weights = rgb.new_full((rgb.shape[0], 2), 0.5)
+        return fused, weights
 
 
 class MMSAFusion(nn.Module):
@@ -207,31 +257,45 @@ class MMSAFusion(nn.Module):
         out_channels=(144, 288, 576, 1152),
         num_heads=4,
         max_tokens_per_level=(1024, 1024, 1024, 1024),
+        use_agreement_gate=False,
+        fusion_mode="mmsa",
     ):
         super().__init__()
+        if fusion_mode not in {"mmsa", "naive"}:
+            raise ValueError(f"Unsupported fusion_mode: {fusion_mode}")
+        self.fusion_mode = fusion_mode
         self.blocks = nn.ModuleList()
         for idx, (rgb_ch, aux_ch, out_ch, max_tokens) in enumerate(
             zip(rgb_channels, aux_channels, out_channels, max_tokens_per_level)
         ):
-            # Skip interaction on f1 (highest resolution) to control cost.
-            enable_interaction = idx > 0
-            self.blocks.append(
-                MMSAFusionBlock(
-                    rgb_channels=rgb_ch,
-                    aux_channels=aux_ch,
-                    out_channels=out_ch,
-                    num_heads=num_heads,
-                    max_tokens=max_tokens,
-                    enable_interaction=enable_interaction,
+            if fusion_mode == "naive":
+                self.blocks.append(
+                    NaiveFusionBlock(
+                        rgb_channels=rgb_ch,
+                        aux_channels=aux_ch,
+                        out_channels=out_ch,
+                    )
                 )
-            )
+            else:
+                # Skip interaction on f1 (highest resolution) to control cost.
+                enable_interaction = idx > 0
+                self.blocks.append(
+                    MMSAFusionBlock(
+                        rgb_channels=rgb_ch,
+                        aux_channels=aux_ch,
+                        out_channels=out_ch,
+                        num_heads=num_heads,
+                        max_tokens=max_tokens,
+                        enable_interaction=enable_interaction,
+                        use_agreement_gate=use_agreement_gate,
+                    )
+                )
 
-    def forward(self, rgb_features, aux_features):
+    def forward(self, rgb_features, aux_features, agreement_map=None):
         fused_features = []
         pooled_weights = []
         for idx, block in enumerate(self.blocks):
-            fused, weights = block(rgb_features[idx], aux_features[idx])
+            fused, weights = block(rgb_features[idx], aux_features[idx], agreement_map=agreement_map)
             fused_features.append(fused)
             pooled_weights.append(weights)
         return fused_features, pooled_weights
-

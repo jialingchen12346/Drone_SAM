@@ -70,6 +70,7 @@ class SAM2HieraAdapter(nn.Module):
         config='configs/sam2.1/sam2.1_hiera_l.yaml',
         bottleneck_dim=32,
         freeze_backbone=True,
+        unfreeze_last_n_blocks=0,
     ):
         super().__init__()
 
@@ -89,6 +90,13 @@ class SAM2HieraAdapter(nn.Module):
             for blk in self.trunk.blocks
         ])
         self.trunk.blocks = adapted_blocks
+        self.num_blocks = len(self.trunk.blocks)
+
+        if freeze_backbone and unfreeze_last_n_blocks > 0:
+            n = min(int(unfreeze_last_n_blocks), self.num_blocks)
+            for blk in self.trunk.blocks[-n:]:
+                for param in blk.block.parameters():
+                    param.requires_grad = True
 
     def forward(self, x):
         """

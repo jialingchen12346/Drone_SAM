@@ -13,6 +13,7 @@ import torch.nn.functional as F
 
 from segmentation.models.backbones.sam2_hiera_adapter import SAM2HieraAdapter
 from segmentation.models.backbones.aux_encoder import ConvNeXtTinyAux
+from segmentation.models.decode_heads.segformer_lite_head import SegFormerLiteHead
 from segmentation.models.fusion.rrf import RRF
 from segmentation.models.decode_heads.dsd_head import DSDHead
 
@@ -34,6 +35,46 @@ def dice_loss(pred, target, num_classes, ignore_index=255, smooth=1.0):
     intersection = (pred_soft * one_hot).sum(dim=dims)
     cardinality = pred_soft.sum(dim=dims) + one_hot.sum(dim=dims)
 
+    dice = (2.0 * intersection + smooth) / (cardinality + smooth)
+    return (1.0 - dice).mean()
+
+
+def weighted_cross_entropy_loss(logits, target, pixel_weight, ignore_index=255, class_weight=None):
+    ce_map = F.cross_entropy(
+        logits,
+        target,
+        ignore_index=ignore_index,
+        reduction="none",
+        weight=class_weight,
+    )
+    valid_mask = (target != ignore_index).float()
+    weight = pixel_weight.float() * valid_mask
+    denom = weight.sum().clamp_min(1.0)
+    return (ce_map * weight).sum() / denom
+
+
+def weighted_dice_loss(
+    pred,
+    target,
+    pixel_weight,
+    num_classes,
+    ignore_index=255,
+    smooth=1.0,
+):
+    mask = target != ignore_index
+    target_clean = target.clone()
+    target_clean[~mask] = 0
+
+    pred_soft = F.softmax(pred, dim=1)
+    one_hot = F.one_hot(target_clean, num_classes).permute(0, 3, 1, 2).float()
+    weighted_mask = mask.unsqueeze(1).float() * pixel_weight.unsqueeze(1).float()
+
+    pred_soft = pred_soft * weighted_mask
+    one_hot = one_hot * weighted_mask
+
+    dims = (0, 2, 3)
+    intersection = (pred_soft * one_hot).sum(dim=dims)
+    cardinality = pred_soft.sum(dim=dims) + one_hot.sum(dim=dims)
     dice = (2.0 * intersection + smooth) / (cardinality + smooth)
     return (1.0 - dice).mean()
 
@@ -119,6 +160,49 @@ def boundary_bce_loss(logits, target, ignore_index=255):
     return (loss * valid).sum() / denom
 
 
+class ReliabilityGuidedRefineBlock(nn.Module):
+    """Refine prediction with disagreement and multi-scale reliability cues."""
+
+    def __init__(self, num_classes, reliability_levels=4, reliability_channels=64):
+        super().__init__()
+        in_channels = num_classes * 3 + 1 + reliability_levels * 2
+        self.refine = nn.Sequential(
+            nn.Conv2d(in_channels, reliability_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(reliability_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(reliability_channels, reliability_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(reliability_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(reliability_channels, num_classes, kernel_size=1),
+        )
+
+    def forward(
+        self,
+        main_pred,
+        pred_rgb,
+        pred_thm,
+        disagreement_map,
+        reliability_maps,
+        use_gate=True,
+    ):
+        rel_upsampled = [
+            F.interpolate(
+                rel_map,
+                size=main_pred.shape[2:],
+                mode="bilinear",
+                align_corners=True,
+            )
+            for rel_map in reliability_maps
+        ]
+        refine_in = torch.cat(
+            [main_pred, pred_rgb, pred_thm, disagreement_map, *rel_upsampled], dim=1
+        )
+        delta = self.refine(refine_in)
+        if use_gate:
+            return main_pred + disagreement_map * delta
+        return main_pred + delta
+
+
 class RRFDSDSegmentor(nn.Module):
     """End-to-end multimodal segmentor with RRF fusion + DSD decoder."""
 
@@ -146,6 +230,13 @@ class RRFDSDSegmentor(nn.Module):
         rare_class_indices=None,
         rare_class_scale=1.0,
         ce_class_weight=None,
+        enable_modality_heads=False,
+        modality_head_weight=0.2,
+        enable_reliability_guided_refine=False,
+        disagreement_refine_weight=0.5,
+        disagreement_refine_mode="prob",
+        disagreement_refine_use_gate=True,
+        disagreement_refine_channels=64,
     ):
         super().__init__()
         self.num_classes = num_classes
@@ -157,6 +248,12 @@ class RRFDSDSegmentor(nn.Module):
         self.ohem_thresh = ohem_thresh
         self.ohem_min_kept = ohem_min_kept
         self.boundary_aux_loss_weight = boundary_aux_loss_weight
+        self.enable_modality_heads = enable_modality_heads
+        self.modality_head_weight = modality_head_weight
+        self.enable_reliability_guided_refine = enable_reliability_guided_refine
+        self.disagreement_refine_weight = disagreement_refine_weight
+        self.disagreement_refine_mode = disagreement_refine_mode
+        self.disagreement_refine_use_gate = disagreement_refine_use_gate
         if ce_class_weight is None:
             self.register_buffer("ce_class_weight", None, persistent=False)
         else:
@@ -195,16 +292,52 @@ class RRFDSDSegmentor(nn.Module):
             rare_class_scale=rare_class_scale,
         )
 
-    def _compute_loss(self, logits, gt):
+        if self.enable_modality_heads:
+            self.rgb_head = SegFormerLiteHead(
+                in_channels_list=list(self.rgb_encoder.out_channels),
+                num_classes=num_classes,
+                decode_channels=decode_channels,
+            )
+            self.thm_head = SegFormerLiteHead(
+                in_channels_list=list(self.aux_encoder.out_channels),
+                num_classes=num_classes,
+                decode_channels=decode_channels,
+            )
+            for head in (self.rgb_head, self.thm_head):
+                for aux_name in ("aux_head2", "aux_head3"):
+                    aux_mod = getattr(head, aux_name, None)
+                    if aux_mod is not None:
+                        aux_mod.requires_grad_(False)
+
+        if self.enable_reliability_guided_refine:
+            if not self.enable_modality_heads:
+                raise ValueError(
+                    "enable_reliability_guided_refine requires enable_modality_heads=True"
+                )
+            self.reliability_refine = ReliabilityGuidedRefineBlock(
+                num_classes=num_classes,
+                reliability_levels=len(self.rgb_encoder.out_channels),
+                reliability_channels=disagreement_refine_channels,
+            )
+
+    def _compute_loss(self, logits, gt, pixel_weight=None):
         logits = logits.contiguous()
         gt = gt.contiguous()
-        if self.use_ohem:
+        if pixel_weight is None and self.use_ohem:
             ce = ohem_cross_entropy_loss(
                 logits,
                 gt,
                 ignore_index=255,
                 thresh=self.ohem_thresh,
                 min_kept=self.ohem_min_kept,
+                class_weight=self.ce_class_weight,
+            )
+        elif pixel_weight is not None:
+            ce = weighted_cross_entropy_loss(
+                logits,
+                gt,
+                pixel_weight=pixel_weight,
+                ignore_index=255,
                 class_weight=self.ce_class_weight,
             )
         else:
@@ -215,11 +348,30 @@ class RRFDSDSegmentor(nn.Module):
                 weight=self.ce_class_weight,
             )
         if self.use_dice:
-            dl = dice_loss(logits, gt, self.num_classes, ignore_index=255)
+            if pixel_weight is None:
+                dl = dice_loss(logits, gt, self.num_classes, ignore_index=255)
+            else:
+                dl = weighted_dice_loss(
+                    logits,
+                    gt,
+                    pixel_weight=pixel_weight,
+                    num_classes=self.num_classes,
+                    ignore_index=255,
+                )
             return ce + self.dice_weight * dl
         return ce
 
-    def forward(self, rgb, aux, gt=None):
+    def _compute_disagreement_map(self, pred_rgb, pred_thm, mode):
+        if mode == "argmax":
+            return (pred_rgb.argmax(dim=1) != pred_thm.argmax(dim=1)).float().unsqueeze(1)
+        if mode == "prob":
+            prob_rgb = F.softmax(pred_rgb, dim=1)
+            prob_thm = F.softmax(pred_thm, dim=1)
+            overlap = (prob_rgb * prob_thm).sum(dim=1, keepdim=True)
+            return 1.0 - overlap
+        raise ValueError(f"Unsupported disagreement_refine_mode: {mode}")
+
+    def forward(self, rgb, aux, gt=None, pixel_weight=None):
         """
         Args:
             rgb: [B, 3, H, W]
@@ -242,6 +394,21 @@ class RRFDSDSegmentor(nn.Module):
         )
 
         output = {}
+        pred_rgb = None
+        pred_thm = None
+        disagreement_map = None
+        if self.enable_modality_heads:
+            pred_rgb, _ = self.rgb_head(rgb_features)
+            pred_thm, _ = self.thm_head(aux_features)
+            pred_rgb = F.interpolate(pred_rgb, size=(h, w), mode="bilinear", align_corners=True)
+            pred_thm = F.interpolate(pred_thm, size=(h, w), mode="bilinear", align_corners=True)
+            disagreement_map = self._compute_disagreement_map(
+                pred_rgb, pred_thm, self.disagreement_refine_mode
+            )
+            output["pred_rgb"] = pred_rgb
+            output["pred_thm"] = pred_thm
+            output["disagreement_map"] = disagreement_map
+
         if self.training and gt is not None:
             decoder_out = self.decoder(fused_features)
             decoder_extra = {}
@@ -256,11 +423,20 @@ class RRFDSDSegmentor(nn.Module):
                 main_out, aux_outs = decoder_out, []
 
             main_out = F.interpolate(main_out, size=(h, w), mode='bilinear', align_corners=True)
-            loss = self._compute_loss(main_out, gt)
+            loss = self._compute_loss(main_out, gt, pixel_weight=pixel_weight)
             for aux_idx, aux_out in enumerate(aux_outs):
                 aux_up = F.interpolate(aux_out, size=(h, w), mode='bilinear', align_corners=True)
                 aux_weight = self.aux_loss_weight if aux_idx < 2 else self.detail_aux_loss_weight
-                loss = loss + aux_weight * self._compute_loss(aux_up, gt)
+                loss = loss + aux_weight * self._compute_loss(
+                    aux_up, gt, pixel_weight=pixel_weight
+                )
+            if self.enable_modality_heads:
+                loss = loss + self.modality_head_weight * self._compute_loss(
+                    pred_rgb, gt, pixel_weight=pixel_weight
+                )
+                loss = loss + self.modality_head_weight * self._compute_loss(
+                    pred_thm, gt, pixel_weight=pixel_weight
+                )
 
             if (
                 self.boundary_aux_loss_weight > 0.0
@@ -271,12 +447,44 @@ class RRFDSDSegmentor(nn.Module):
                 loss = loss + self.boundary_aux_loss_weight * b_loss
                 output["loss_boundary"] = b_loss.detach()
 
-            output["pred"] = main_out
+            refined_out = main_out
+            if self.enable_reliability_guided_refine:
+                refined_out = self.reliability_refine(
+                    main_out,
+                    pred_rgb,
+                    pred_thm,
+                    disagreement_map,
+                    reliability_maps,
+                    use_gate=self.disagreement_refine_use_gate,
+                )
+                loss = loss + self.disagreement_refine_weight * self._compute_loss(
+                    refined_out, gt, pixel_weight=pixel_weight
+                )
+                output["pred_main"] = main_out
+                output["pred_refined"] = refined_out
+
+            output["pred"] = refined_out
             output["loss"] = loss
         else:
-            main_out = self.decoder(fused_features)
+            decoder_out = self.decoder(fused_features)
+            if isinstance(decoder_out, tuple):
+                main_out = decoder_out[0]
+            else:
+                main_out = decoder_out
             main_out = F.interpolate(main_out, size=(h, w), mode='bilinear', align_corners=True)
-            output["pred"] = main_out
+            refined_out = main_out
+            if self.enable_reliability_guided_refine:
+                refined_out = self.reliability_refine(
+                    main_out,
+                    pred_rgb,
+                    pred_thm,
+                    disagreement_map,
+                    reliability_maps,
+                    use_gate=self.disagreement_refine_use_gate,
+                )
+                output["pred_main"] = main_out
+                output["pred_refined"] = refined_out
+            output["pred"] = refined_out
 
         output["fusion_weights"] = pooled_weights
         output["reliability_maps"] = reliability_maps

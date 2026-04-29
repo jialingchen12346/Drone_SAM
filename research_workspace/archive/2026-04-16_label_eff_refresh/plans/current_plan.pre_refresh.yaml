@@ -1,0 +1,139 @@
+objective: "面向审稿友好的标签效率研究，完成遥感/无人机多模态语义分割的半监督+弱监督方法、实验与论文材料"
+status: active
+last_updated: "2026-04-08-session2"
+strategy_shift:
+  from: "FMB 全监督结构卷分"
+  to: "标签效率（半监督/弱监督）+ 模态鲁棒性 + 跨数据集证据"
+active_docs:
+  - "research_workspace/notes/ACTIVE_CONTEXT.md"
+  - "research_workspace/plans/current_plan.yaml"
+  - "research_workspace/plans/LABEL_EFFICIENT_RS_PLAN_2026-03-30.md"
+  - "research_workspace/plans/PUBLICATION_STRATEGY_2026-03-30.md"
+  - "research_workspace/notes/DECISIONS.md"
+  - "research_workspace/notes/SESSION_HANDOFF.md"
+archive_path: "research_workspace/archive/legacy_2026-03-30_focus_shift/"
+milestones:
+  - id: M0
+    title: "完成研究问题重定义与主线切换"
+    status: completed
+  - id: M1
+    title: "完成协议重建（strict 口径 + label ratio + weak label 规则）"
+    status: in_progress
+  - id: M2
+    title: "建立半监督强基线并完成首轮消融"
+    status: pending
+  - id: M3
+    title: "实现弱监督分支（point/scribble）并完成统一训练"
+    status: pending
+  - id: M4
+    title: "完成跨数据集验证（FMB 主场 + 遥感补充）"
+    status: pending
+  - id: M5
+    title: "完成投稿主包（主表、消融、效率、鲁棒性、复现）"
+    status: pending
+  - id: M6
+    title: "完成 BMVC 主投稿并准备 ACCV 备投"
+    status: pending
+tasks:
+  - id: T29
+    title: "冻结旧主线：停止新增 FMB 全监督堆模块实验"
+    status: completed
+    owner: codex
+    depends_on: []
+  - id: T30
+    title: "固化口径红线：论文主表仅 strict(absent=0)"
+    status: completed
+    owner: codex
+    depends_on: [T29]
+  - id: T31
+    title: "制定并落地 label ratio 划分协议（1/2/5/10/20/50%）"
+    status: completed
+    owner: codex
+    depends_on: [T30]
+  - id: T32
+    title: "制定并落地 weak label 生成协议（point -> scribble）"
+    status: completed
+    owner: codex
+    depends_on: [T30]
+  - id: T33
+    title: "实现半监督训练入口（L+U 批次组织、伪标签缓存与刷新）"
+    status: completed
+    owner: codex
+    depends_on: [T31]
+  - id: T43
+    title: "5%/20% 预算 30-epoch 趋势验证（四路线扫描）"
+    status: in_progress
+    owner: codex
+    depends_on: [T31, T32]
+  - id: T44
+    title: "伪标签质量诊断（modality ablation + agree/disagree gap）"
+    status: in_progress
+    owner: codex
+    depends_on: [T33]
+  - id: T45
+    title: "跨模态一致性伪标签过滤（实现 build_pseudo_targets 改进版）"
+    status: pending
+    owner: codex
+    depends_on: [T44]
+    note: "门槛：agree gap > 0.05 才启动"
+  - id: T34
+    title: "实现可靠性感知伪标签筛选（模态质量权重 + 不确定性过滤）"
+    status: pending
+    owner: codex
+    depends_on: [T33]
+  - id: T35
+    title: "实现一致性训练与退化增强（模态噪声/缺失模拟）"
+    status: pending
+    owner: codex
+    depends_on: [T33]
+  - id: T36
+    title: "完成半监督核心消融（筛选阈值、一致性损失、可靠性分支）"
+    status: pending
+    owner: codex
+    depends_on: [T34, T35]
+  - id: T37
+    title: "接入弱监督损失（point/scribble）并完成半弱监督统一训练"
+    status: pending
+    owner: codex
+    depends_on: [T32, T36]
+  - id: T38
+    title: "完成 FMB 主实验矩阵（clean/degraded/missing-modality）"
+    status: pending
+    owner: codex
+    depends_on: [T37]
+  - id: T39
+    title: "完成遥感补充实验（LoveDA/ISPRS/UAVid 至少 1 个可复现实验）"
+    status: pending
+    owner: codex
+    depends_on: [T37]
+  - id: T40
+    title: "构建论文主表：性能-标注比例-鲁棒性-成本四维对照"
+    status: pending
+    owner: codex
+    depends_on: [T38, T39]
+  - id: T41
+    title: "完成审稿风险材料（失败案例、局限性、威胁与复现说明）"
+    status: pending
+    owner: codex
+    depends_on: [T40]
+  - id: T42
+    title: "完成 BMVC 主投稿版本并整理 ACCV 增强包"
+    status: pending
+    owner: codex
+    depends_on: [T41]
+schedule:
+  - "2026-03-30 ~ 2026-04-06：协议重建 + 半监督入口"
+  - "2026-04-07 ~ 2026-04-20：半监督主实验与核心消融"
+  - "2026-04-21 ~ 2026-05-10：弱监督扩展 + 遥感补充实验"
+  - "2026-05-11 ~ 2026-05-22：BMVC 投稿包收敛"
+  - "2026-05-23 ~ 2026-07-05：ACCV 增强实验与重写"
+  - "叙事重定向（D11）：融合从目的变为手段，多模态服务标注效率"
+  - "架构创新收敛（D12）：只做跨模态一致性伪标签过滤，其余暂不实现"
+  - "实验策略（D13）：先 30-epoch 趋势验证，确认后再开 120-epoch 完整训练"
+  - "诊断方案（D14）：modality ablation forward 替代真双路预测头"
+  - "旧研究材料位于 archive/legacy_2026-03-23/，仅作经验库，不作结果事实来源"
+  - "当前代码资产（auto-loop、staged-funnel、strict 评测）继续复用"
+  - "FMB 仍是短期主实验场，但研究目标改为 label efficiency 而非全监督刷分"
+  - "跨数据集证据为必要项，至少补齐一个遥感公开集可复现结果"
+  - "方法复杂度受控：优先单主线、少模块、强证据"
+  - "B2 夜间搜救 UAV RGB-T 方向已暂存为后续独立课题，不并入当前主线"

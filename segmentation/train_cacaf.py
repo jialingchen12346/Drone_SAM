@@ -18,6 +18,7 @@ Key hyper-parameters:
 """
 
 import argparse
+import copy
 import inspect
 import os
 import os.path as osp
@@ -73,12 +74,22 @@ def parse_args():
     # Training
     p.add_argument("--epochs",     type=int,   default=200)
     p.add_argument("--batch-size", type=int,   default=4)
+    p.add_argument("--accum-steps", type=int, default=1,
+                   help="Gradient accumulation steps. Effective batch = batch_size * accum_steps * world_size")
     p.add_argument("--crop-size",  type=int,   default=512)
     p.add_argument("--num-workers",type=int,   default=4)
+    p.add_argument("--aux-encoder-size", default="tiny", choices=["tiny", "small"],
+                   help="Thermal/auxiliary ConvNeXt encoder size")
+    p.add_argument("--aux-pretrained-path", default=None,
+                   help="Optional local ConvNeXt aux checkpoint path; avoids network download")
 
     # Optimizer
     p.add_argument("--lr-adapter", type=float, default=1e-4,
                    help="LR for SAM2 bottleneck adapter parameters")
+    p.add_argument("--lr-rgb-backbone", type=float, default=1e-5,
+                   help="LR for unfrozen SAM2/Hiera backbone block parameters")
+    p.add_argument("--rgb-layer-decay", type=float, default=0.90,
+                   help="Layer-wise LR decay for unfrozen SAM2/Hiera blocks")
     p.add_argument("--lr-aux",     type=float, default=1e-4,
                    help="LR for ConvNeXt-Tiny auxiliary encoder")
     p.add_argument("--lr-head",    type=float, default=2e-4,
@@ -98,6 +109,15 @@ def parse_args():
                    help="Run validation every N epochs")
     p.add_argument("--save-freq", type=int, default=10,
                    help="Save checkpoint every N epochs")
+    p.add_argument("--ema-decay", type=float, default=0.999,
+                   help="EMA decay for teacher model")
+    p.add_argument("--val-model", default="student", choices=["student", "teacher"],
+                   help="Model used for validation and best checkpoint selection")
+    p.add_argument("--best-metric", default="miou",
+                   choices=["miou", "critical_mean"],
+                   help="Validation metric used for best checkpoint selection")
+    p.add_argument("--critical-classes", type=str, default="3,9,10,11,12,13",
+                   help="Comma-separated 0-based class ids used by critical_mean selection")
     p.add_argument("--use-dice", action="store_true", default=False,
                    help="Add Dice loss alongside CE (improves rare-class IoU)")
     p.add_argument("--dice-weight", type=float, default=1.0,
@@ -138,6 +158,32 @@ def parse_args():
                    help="CACAF variant only: replace CACAF with simple concat fusion")
     p.add_argument("--no-sagu",  action="store_true", default=False,
                    help="CACAF variant only: disable SAGU channel attention in HGSOAD")
+    p.add_argument("--enable-modality-heads", action="store_true", default=False,
+                   help="Enable RGB-only and Thermal-only auxiliary heads")
+    p.add_argument("--modality-head-weight", type=float, default=0.2,
+                   help="Auxiliary supervision weight for modality heads")
+    p.add_argument("--fusion-use-agreement-map", action="store_true", default=False,
+                   help="MMSA baseline only: use modality agreement map in fusion blocks")
+    p.add_argument("--fusion-agreement-mode", default="prob", choices=["argmax", "prob"],
+                   help="MMSA baseline only: agreement map mode for fusion")
+    p.add_argument("--mmsa-fusion-mode", default="mmsa", choices=["mmsa", "naive"],
+                   help="MMSA baseline only: fusion block type")
+    p.add_argument("--enable-disagreement-refine", action="store_true", default=False,
+                   help="MMSA baseline only: enable disagreement refinement branch")
+    p.add_argument("--disagreement-refine-weight", type=float, default=0.5,
+                   help="Loss weight for refined prediction")
+    p.add_argument("--disagreement-refine-mode", default="argmax", choices=["argmax", "prob"],
+                   help="Disagreement map mode for refinement")
+    p.add_argument("--no-disagreement-refine-gate", action="store_true", default=False,
+                   help="Remove spatial disagreement gate from refinement residual")
+    p.add_argument("--enable-reliability-guided-refine", action="store_true", default=False,
+                   help="RRF-DSD only: refine main prediction with disagreement and multi-scale reliability maps")
+    p.add_argument("--thermal-prior-injection", action="store_true", default=False,
+                   help="MMSA baseline only: inject thermal features into RGB encoder features before fusion")
+    p.add_argument("--thermal-prior-init", type=float, default=0.1,
+                   help="MMSA baseline only: initial scale for thermal prior injection")
+    p.add_argument("--unfreeze-rgb-last-n-blocks", type=int, default=0,
+                   help="MMSA baseline only: unfreeze the last N original SAM2/Hiera blocks")
     p.add_argument("--freeze-encoders", default=None, metavar="CKPT",
                    help="Load encoder (SAM2 adapter + ConvNeXt) weights from CKPT "
                         "and freeze them. Only fusion+decoder will be trained.")
@@ -147,6 +193,9 @@ def parse_args():
     p.add_argument("--eval-resize-mode", default="letterbox",
                    choices=["stretch", "letterbox"],
                    help="Validation/Test resize mode: stretch or keep-ratio letterbox")
+    p.add_argument("--train-resize-mode", default="legacy",
+                   choices=["legacy", "mmseg"],
+                   help="Training resize mode: legacy or mmseg-style ratio resize before pad/crop")
     p.add_argument("--cat-max-ratio", type=float, default=0.75,
                    help="RandomCrop max dominant-class ratio (1.0 disables)")
     p.add_argument("--blur-prob", type=float, default=0.2,
@@ -184,6 +233,8 @@ def parse_args():
     args, unknown = p.parse_known_args()
     if unknown:
         print(f"[warn] Ignoring unknown args: {unknown}")
+    if args.accum_steps < 1:
+        raise ValueError("--accum-steps must be >= 1")
     return args
 
 
@@ -293,9 +344,12 @@ def unwrap_model(model: nn.Module) -> nn.Module:
     return model
 
 
-def load_checkpoint(model, optimizer, scaler, path, device):
-    ckpt = torch.load(path, map_location=device)
+def load_checkpoint(model, teacher, optimizer, scaler, path, device):
+    ckpt = torch.load(path, map_location=device, weights_only=False)
     unwrap_model(model).load_state_dict(ckpt["model"])
+    if teacher is not None:
+        teacher_state = ckpt.get("teacher", ckpt["model"])
+        teacher.load_state_dict(teacher_state)
     optimizer.load_state_dict(ckpt["optimizer"])
     if scaler is not None and "scaler" in ckpt:
         scaler.load_state_dict(ckpt["scaler"])
@@ -303,6 +357,61 @@ def load_checkpoint(model, optimizer, scaler, path, device):
     best_miou   = ckpt.get("best_miou", 0.0)
     print(f"  [ckpt] resumed from epoch {ckpt['epoch']}  best_mIoU={best_miou:.2f}")
     return start_epoch, best_miou
+
+
+def build_ema_teacher(model: nn.Module) -> nn.Module:
+    teacher = copy.deepcopy(unwrap_model(model))
+    teacher.eval()
+    for param in teacher.parameters():
+        param.requires_grad_(False)
+    return teacher
+
+
+@torch.no_grad()
+def ema_update(teacher: nn.Module, student: nn.Module, decay: float) -> None:
+    student_core = unwrap_model(student)
+    teacher_params = dict(teacher.named_parameters())
+    student_params = dict(student_core.named_parameters())
+    for name, param_t in teacher_params.items():
+        param_s = student_params[name]
+        param_t.data.mul_(decay).add_(param_s.data, alpha=1.0 - decay)
+
+    teacher_buffers = dict(teacher.named_buffers())
+    student_buffers = dict(student_core.named_buffers())
+    for name, buffer_t in teacher_buffers.items():
+        buffer_s = student_buffers[name]
+        if torch.is_floating_point(buffer_t):
+            buffer_t.data.mul_(decay).add_(buffer_s.data, alpha=1.0 - decay)
+        else:
+            buffer_t.data.copy_(buffer_s.data)
+
+
+def summarize_critical_classes(iou_per_class, critical_indices):
+    critical_rows = []
+    critical_vals = []
+    for idx in critical_indices:
+        if idx < 0 or idx >= len(iou_per_class):
+            continue
+        val = float(iou_per_class[idx])
+        critical_rows.append((CLASSES[idx], val))
+        if not np.isnan(val):
+            critical_vals.append(val)
+    if critical_vals:
+        critical_mean = float(np.mean(critical_vals))
+        critical_min = float(np.min(critical_vals))
+    else:
+        critical_mean = float("nan")
+        critical_min = float("nan")
+    return critical_rows, critical_mean, critical_min
+
+
+def select_validation_score(results, best_metric, critical_indices):
+    if best_metric == "miou":
+        return float(results["mIoU"])
+    if best_metric == "critical_mean":
+        _, critical_mean, _ = summarize_critical_classes(results["iou_per_class"], critical_indices)
+        return critical_mean
+    raise ValueError(f"Unsupported best_metric: {best_metric}")
 
 
 def _iter_label_paths(data_root: str, split: str):
@@ -421,6 +530,13 @@ def main():
 
     if args.model_variant != "cacaf" and (args.no_cacaf or args.no_sagu):
         rank0_print("  [warn] --no-cacaf/--no-sagu 仅对 cacaf 变体生效，当前将忽略这些参数")
+    if args.model_variant != "mmsa_baseline" and (
+        args.enable_modality_heads
+        or args.fusion_use_agreement_map
+        or args.enable_disagreement_refine
+        or args.thermal_prior_injection
+    ):
+        rank0_print("  [warn] MMSA-specific options are ignored because model_variant is not mmsa_baseline")
 
     train_split = "trainval" if args.use_trainval else "train"
     ce_class_weight = None
@@ -504,18 +620,38 @@ def main():
             rare_class_indices=rare_class_indices,
             rare_class_scale=args.rare_class_scale,
             ce_class_weight=ce_class_weight,
+            enable_modality_heads=args.enable_modality_heads,
+            modality_head_weight=args.modality_head_weight,
+            enable_reliability_guided_refine=args.enable_reliability_guided_refine,
+            disagreement_refine_weight=args.disagreement_refine_weight,
+            disagreement_refine_mode=args.disagreement_refine_mode,
+            disagreement_refine_use_gate=not args.no_disagreement_refine_gate,
         ).to(device)
     else:
         model = MMSABaselineSegmentor(
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
             num_classes=NUM_CLASSES,
+            aux_encoder_size=args.aux_encoder_size,
+            aux_pretrained_path=args.aux_pretrained_path,
+            unfreeze_rgb_last_n_blocks=args.unfreeze_rgb_last_n_blocks,
             use_dice=args.use_dice,
             dice_weight=args.dice_weight,
             use_ohem=args.use_ohem,
             ohem_thresh=args.ohem_thresh,
             ohem_min_kept=args.ohem_min_kept,
             ce_class_weight=ce_class_weight,
+            enable_modality_heads=args.enable_modality_heads,
+            modality_head_weight=args.modality_head_weight,
+            fusion_use_agreement_map=args.fusion_use_agreement_map,
+            fusion_agreement_mode=args.fusion_agreement_mode,
+            mmsa_fusion_mode=args.mmsa_fusion_mode,
+            enable_disagreement_refine=args.enable_disagreement_refine,
+            disagreement_refine_weight=args.disagreement_refine_weight,
+            disagreement_refine_mode=args.disagreement_refine_mode,
+            disagreement_refine_use_gate=not args.no_disagreement_refine_gate,
+            thermal_prior_injection=args.thermal_prior_injection,
+            thermal_prior_init=args.thermal_prior_init,
         ).to(device)
 
     # ------------------------------------------------------------------
@@ -541,19 +677,33 @@ def main():
         rank0_print(f"  冻结: {frozen/1e6:.1f}M  可训练: {trainable/1e6:.1f}M "
                     f"(仅 fusion + decoder)\n")
 
-    # Parameter groups with separate LRs
+    # Parameter groups with separate LRs.  If SAM2/Hiera blocks are partially
+    # unfrozen, keep their LR much lower than the adapters and apply layer decay.
     adapter_params = []
+    rgb_backbone_by_block = {}
+    rgb_backbone_other = []
     aux_params     = []
     head_params    = []
 
     for name, param in model.named_parameters():
         if not param.requires_grad:
             continue
-        if "rgb_encoder" in name:          # SAM2 adapter params
+        if "rgb_encoder" in name and ".prompt_learn." in name:
             adapter_params.append(param)
-        elif "aux_encoder" in name:     # ConvNeXt-Tiny
+        elif "rgb_encoder" in name:
+            block_idx = None
+            parts = name.split(".")
+            if "blocks" in parts:
+                idx_pos = parts.index("blocks") + 1
+                if idx_pos < len(parts) and parts[idx_pos].isdigit():
+                    block_idx = int(parts[idx_pos])
+            if block_idx is None:
+                rgb_backbone_other.append(param)
+            else:
+                rgb_backbone_by_block.setdefault(block_idx, []).append(param)
+        elif "aux_encoder" in name:
             aux_params.append(param)
-        else:                           # fusion + decoder
+        else:
             head_params.append(param)
 
     if args.freeze_encoders:
@@ -561,12 +711,38 @@ def main():
         param_groups = [{"params": head_params, "lr": args.lr_head, "name": "head"}]
         base_lrs = [args.lr_head]
     else:
-        param_groups = [
-            {"params": adapter_params, "lr": args.lr_adapter, "name": "adapter"},
-            {"params": aux_params,     "lr": args.lr_aux,     "name": "aux_encoder"},
-            {"params": head_params,    "lr": args.lr_head,    "name": "head"},
-        ]
-        base_lrs = [args.lr_adapter, args.lr_aux, args.lr_head]
+        param_groups = []
+        base_lrs = []
+        if adapter_params:
+            param_groups.append({"params": adapter_params, "lr": args.lr_adapter, "name": "adapter"})
+            base_lrs.append(args.lr_adapter)
+        if rgb_backbone_other:
+            lr = args.lr_rgb_backbone * (args.rgb_layer_decay ** max(args.unfreeze_rgb_last_n_blocks, 1))
+            param_groups.append({"params": rgb_backbone_other, "lr": lr, "name": "rgb_backbone_other"})
+            base_lrs.append(lr)
+        if rgb_backbone_by_block:
+            max_block_idx = max(rgb_backbone_by_block)
+            for block_idx in sorted(rgb_backbone_by_block):
+                decay_power = max_block_idx - block_idx
+                lr = args.lr_rgb_backbone * (args.rgb_layer_decay ** decay_power)
+                param_groups.append(
+                    {
+                        "params": rgb_backbone_by_block[block_idx],
+                        "lr": lr,
+                        "name": f"rgb_backbone_block{block_idx}",
+                    }
+                )
+                base_lrs.append(lr)
+        if aux_params:
+            param_groups.append({"params": aux_params, "lr": args.lr_aux, "name": "aux_encoder"})
+            base_lrs.append(args.lr_aux)
+        if head_params:
+            param_groups.append({"params": head_params, "lr": args.lr_head, "name": "head"})
+            base_lrs.append(args.lr_head)
+
+    for pg in param_groups:
+        n_params = sum(p.numel() for p in pg["params"])
+        rank0_print(f"[optim] group={pg.get('name', '?')} params={n_params/1e6:.2f}M lr={pg['lr']:.2e}")
 
     optimizer = torch.optim.AdamW(
         param_groups, weight_decay=args.weight_decay
@@ -586,6 +762,8 @@ def main():
             ddp_kwargs["init_sync"] = args.ddp_init_sync
         model = nn.parallel.DistributedDataParallel(model, **ddp_kwargs)
 
+    teacher = build_ema_teacher(model)
+
     # Rank-specific randomness for data pipeline after model construction.
     torch.manual_seed(args.seed + rank)
     np.random.seed(args.seed + rank)
@@ -596,6 +774,7 @@ def main():
     train_ds = FMBDataset(args.data_root, split=train_split,
                           crop_size=args.crop_size, augment=True,
                           eval_resize_mode=args.eval_resize_mode,
+                          train_resize_mode=args.train_resize_mode,
                           cat_max_ratio=args.cat_max_ratio,
                           blur_prob=args.blur_prob,
                           photo_distort=args.photo_distort)
@@ -632,7 +811,14 @@ def main():
         num_workers=args.num_workers, pin_memory=True, drop_last=True,
     )
 
-    total_iters = args.epochs * len(train_loader)
+    updates_per_epoch = max(1, (len(train_loader) + args.accum_steps - 1) // args.accum_steps)
+    total_iters = args.epochs * updates_per_epoch
+    effective_batch = args.batch_size * args.accum_steps * world_size
+    rank0_print(
+        f"[protocol] train_resize={args.train_resize_mode}  eval_resize={args.eval_resize_mode}  "
+        f"batch_per_gpu={args.batch_size}  accum_steps={args.accum_steps}  "
+        f"world_size={world_size}  effective_batch={effective_batch}"
+    )
 
     # ------------------------------------------------------------------
     # Resume
@@ -641,14 +827,15 @@ def main():
     best_miou   = 0.0
     if args.resume:
         start_epoch, best_miou = load_checkpoint(
-            model, optimizer, scaler, args.resume, device
+            model, teacher, optimizer, scaler, args.resume, device
         )
 
     # ------------------------------------------------------------------
     # Training loop
     # ------------------------------------------------------------------
     metric = SegMetric(NUM_CLASSES, IGNORE_INDEX)
-    global_step = start_epoch * len(train_loader)
+    critical_indices = parse_int_list(args.critical_classes) or []
+    global_step = start_epoch * updates_per_epoch
 
     for epoch in range(start_epoch, args.epochs):
         if distributed and train_sampler is not None:
@@ -657,6 +844,7 @@ def main():
         model.train()
         epoch_loss = 0.0
         t0 = time.time()
+        optimizer.zero_grad(set_to_none=True)
 
         for batch_idx, (rgb, thm, gt) in enumerate(train_loader):
             rgb = rgb.to(device, non_blocking=True)
@@ -666,8 +854,6 @@ def main():
             # LR schedule
             cosine_lr_schedule(optimizer, global_step, total_iters,
                                 args.warmup_iters, base_lrs)
-
-            optimizer.zero_grad(set_to_none=True)
 
             if args.amp:
                 with autocast('cuda', dtype=amp_dtype):
@@ -680,18 +866,13 @@ def main():
                     rank0_print(
                         f"  WARNING: non-finite loss detected at iter={batch_idx}, skipping batch on all ranks"
                     )
-                    global_step += 1
+                    optimizer.zero_grad(set_to_none=True)
                     continue
+                loss_to_backward = loss / args.accum_steps
                 if scaler is not None:
-                    scaler.scale(loss).backward()
-                    scaler.unscale_(optimizer)
-                    nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                    scaler.step(optimizer)
-                    scaler.update()
+                    scaler.scale(loss_to_backward).backward()
                 else:
-                    loss.backward()
-                    nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                    optimizer.step()
+                    loss_to_backward.backward()
             else:
                 out  = model(rgb, thm, gt)
                 loss = out["loss"]
@@ -702,20 +883,32 @@ def main():
                     rank0_print(
                         f"  WARNING: non-finite loss detected at iter={batch_idx}, skipping batch on all ranks"
                     )
-                    global_step += 1
+                    optimizer.zero_grad(set_to_none=True)
                     continue
-                loss.backward()
-                nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                optimizer.step()
+                loss_to_backward = loss / args.accum_steps
+                loss_to_backward.backward()
+
+            should_step = ((batch_idx + 1) % args.accum_steps == 0) or (batch_idx + 1 == len(train_loader))
+            if should_step:
+                if scaler is not None:
+                    scaler.unscale_(optimizer)
+                    nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                    optimizer.step()
+                ema_update(teacher, model, args.ema_decay)
+                optimizer.zero_grad(set_to_none=True)
+                global_step += 1
 
             epoch_loss += loss.item()
-            global_step += 1
 
             if rank == 0 and batch_idx % 50 == 0:
                 lr_now = optimizer.param_groups[-1]["lr"]
                 rank0_print(
                     f"  Ep[{epoch+1}/{args.epochs}] "
-                    f"iter {batch_idx}/{len(train_loader)}  "
+                    f"iter {batch_idx}/{len(train_loader)}  step={global_step}/{total_iters}  "
                     f"loss={loss.item():.4f}  lr={lr_now:.2e}"
                 )
 
@@ -738,6 +931,7 @@ def main():
         if rank == 0 and (epoch + 1) % args.save_freq == 0:
             save_checkpoint(
                 dict(epoch=epoch, model=unwrap_model(model).state_dict(),
+                     teacher=teacher.state_dict(),
                      optimizer=optimizer.state_dict(),
                      scaler=scaler.state_dict() if scaler else None,
                      best_miou=best_miou),
@@ -748,24 +942,43 @@ def main():
         if distributed:
             dist.barrier()
         if val_loader and (epoch + 1) % args.val_freq == 0:
-            results = validate(unwrap_model(model), val_loader, device, metric, args.amp, amp_dtype)
+            val_core = teacher if args.val_model == "teacher" else unwrap_model(model)
+            results = validate(val_core, val_loader, device, metric, args.amp, amp_dtype)
             miou = results["mIoU"]
+            critical_rows, critical_mean, critical_min = summarize_critical_classes(
+                results["iou_per_class"], critical_indices
+            )
+            val_score = select_validation_score(results, args.best_metric, critical_indices)
             rank0_print(
-                f"  [val] mIoU={miou:.2f}  mAcc={results['mAcc']:.2f}"
+                f"  [val:{args.val_model}] mIoU={miou:.2f}  mAcc={results['mAcc']:.2f}"
                 f"  aAcc={results['aAcc']:.2f}"
             )
             _print_per_class(results["iou_per_class"])
+            if critical_rows:
+                crit_txt = "  ".join(
+                    f"{name}={val:.1f}" if not np.isnan(val) else f"{name}=nan"
+                    for name, val in critical_rows
+                )
+                rank0_print(
+                    f"  [val:{args.val_model}] critical_mean={critical_mean:.2f}  "
+                    f"critical_min={critical_min:.2f}  select({args.best_metric})={val_score:.2f}"
+                )
+                rank0_print(f"  [critical] {crit_txt}")
 
-            if miou > best_miou:
-                best_miou = miou
+            if val_score > best_miou:
+                best_miou = val_score
                 save_checkpoint(
                     dict(epoch=epoch, model=unwrap_model(model).state_dict(),
+                         teacher=teacher.state_dict(),
                          optimizer=optimizer.state_dict(),
                          scaler=scaler.state_dict() if scaler else None,
                          best_miou=best_miou),
                     osp.join(args.work_dir, "best.pth"),
                 )
-                rank0_print(f"  [val] *** new best mIoU={best_miou:.2f} ***")
+                rank0_print(
+                    f"  [val] *** new best {args.best_metric}={best_miou:.2f} "
+                    f"(mIoU={miou:.2f}, critical_mean={critical_mean:.2f}) ***"
+                )
         if distributed:
             dist.barrier()
 
@@ -781,6 +994,7 @@ def main():
 
 @torch.no_grad()
 def validate(model, loader, device, metric, use_amp, amp_dtype=torch.float16):
+    was_training = model.training
     model.eval()
     metric.reset()
 
@@ -801,7 +1015,7 @@ def validate(model, loader, device, metric, use_amp, amp_dtype=torch.float16):
         for p, g in zip(pred_np, gt_np):
             metric.update(p, g)
 
-    model.train()
+    model.train(was_training)
     return metric.compute()
 
 

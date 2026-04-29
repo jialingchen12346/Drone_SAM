@@ -1,119 +1,310 @@
-objective: "面向审稿友好的标签效率研究，完成遥感/无人机多模态语义分割的半监督+弱监督方法、实验与论文材料"
+objective: "完成标注高效 RGB-T 证据链，并对齐全监督上限差距（MM-SAM 66.10 vs ours 64.31）"
 status: active
-last_updated: "2026-03-30"
-strategy_shift:
-  from: "FMB 全监督结构卷分"
-  to: "标签效率（半监督/弱监督）+ 模态鲁棒性 + 跨数据集证据"
+last_updated: "2026-04-23"
+
 active_docs:
   - "research_workspace/notes/ACTIVE_CONTEXT.md"
-  - "research_workspace/plans/current_plan.yaml"
-  - "research_workspace/plans/LABEL_EFFICIENT_RS_PLAN_2026-03-30.md"
-  - "research_workspace/plans/PUBLICATION_STRATEGY_2026-03-30.md"
   - "research_workspace/notes/DECISIONS.md"
   - "research_workspace/notes/SESSION_HANDOFF.md"
-archive_path: "research_workspace/archive/legacy_2026-03-30_focus_shift/"
+  - "docs/LABEL_EFFICIENT_METHOD_STATUS_2026-04-16.md"
+
+archive_paths:
+  latest_refresh: "research_workspace/archive/2026-04-16_label_eff_refresh/"
+  focus_shift: "research_workspace/archive/legacy_2026-03-30_focus_shift/"
+  old_project: "archive/legacy_2026-03-23/"
+
+research_position:
+  title_zh: "面向标注高效 RGB-T 语义分割的跨模态可靠性估计与分歧细化"
+  title_en_candidate: "Cross-Modal Reliability and Disagreement Refinement for Label-Efficient RGB-T Semantic Segmentation"
+  core_claim:
+    - "RGB/Thermal 独立预测提供跨模态可靠性信号。"
+    - "Teacher 伪标签由置信度准入，并由跨模态一致性软加权。"
+    - "跨模态分歧图用于预测层残差纠错。"
+    - "弱点提示是低成本、高可信锚点。"
+  non_claims:
+    - "不声称提出全监督 SOTA 融合器。"
+    - "不声称解决跨模态空间配准。"
+    - "不把 point diffusion 作为当前主线贡献。"
+
+protocol:
+  dataset: "FMB"
+  main_metric: "test strict mIoU, absent-score=0.0"
+  label_budget: "r10"
+  dense_labels: "10% train samples"
+  unlabeled_pool: "remaining train samples"
+  point_prompt:
+    rule: "每张无标注图中，每个出现类别随机采 1 个 mask 内点；类别像素数 < 8 跳过。"
+    samples: 954
+    total_points: 7671
+    avg_points_per_sample: 8.04
+  loss_weights:
+    unsup_weight: 1.0
+    point_weight: 0.2
+  pseudo_label:
+    confidence_threshold: 0.80
+    agreement_mode: "argmax"
+    agreement_policy: "soft_weight"
+    agreement_floor: 0.5
+  ema_teacher:
+    pseudo_label_source: "teacher"
+    default_val_model: "student"
+    new_options:
+      - "train_label_efficient.py --val-model teacher"
+      - "eval_label_eff.py --checkpoint-state teacher"
+
+current_best:
+  config: "r10/e30/seed42/bs=2+2/modality_heads/soft_agreement/AGF/dref_prob_w0.5"
+  val_strict_miou: 66.70
+  test_strict_miou: 60.59
+  replicate:
+    seed3407_test_strict_miou: 59.88
+    mean_test_strict_miou: 60.24
+  r20_teacher_selected:
+    config: "r20/e30/seed42/--val-model teacher/dref_prob_w0.5"
+    val_strict_miou: 71.14
+    student_state_test_strict_miou: 60.98
+    teacher_state_test_strict_miou: 61.48
+
+full_supervised_alignment:
+  benchmark:
+    mm_sam_official_strict_test_miou: 66.10
+    reproduced_on:
+      - "local 4070TiS"
+      - "remote 4090: ssh -p 55633 root@connect.westc.seetacloud.com"
+  ours_best:
+    config: "r100/crop800/stretch/OHEM/modality_heads/AGF/dref_prob_w0.5/TPI/unfreeze4"
+    best_checkpoint: "epoch_30"
+    strict_test_miou_remote: 64.35
+    strict_test_miou_local_retest: 64.31
+    gap_to_mm_sam: 1.79
+  ablations:
+    unfreeze4_no_tpi:
+      strict_test_miou: 61.64
+      remote: "ssh -p 46181 root@connect.bjb2.seetacloud.com"
+      conclusion: "仅解冻 SAM2 后层会放大泛化问题"
+    unfreeze8_tpi_e50:
+      best_strict_test_miou: 63.07
+      remote: "ssh -p 46181 root@connect.bjb2.seetacloud.com"
+      conclusion: "更深解冻提升 val 但不提升 test"
+    unfreeze4_tpi_e30:
+      best_strict_test_miou: 64.35
+      remote: "ssh -p 36176 root@connect.bjb2.seetacloud.com"
+      conclusion: "当前全监督主线最优"
+
+known_negative_results:
+  - name: "Dual-Branch Co-Training"
+    conclusion: "去融合叙事更干净，但性能不足。"
+  - name: "Point Diffusion"
+    conclusion: "self/consensus/feature-gated 版本均未稳定提升 test。"
+  - name: "Class-balanced Sampler"
+    conclusion: "r20 test 下降，破坏整体分布。"
+  - name: "MFNet external unlabeled"
+    conclusion: "域差异导致 test 下降。"
+  - name: "Thermal Prior Injection"
+    result: "r10 test 60.53"
+    conclusion: "与主线 60.59 打平，无明确增益。"
+  - name: "Disagreement Refinement no-gate"
+    result: "r10 val 65.58 / test 58.54"
+    conclusion: "去掉空间 gate 后 test 明显下降，反向证明 disagreement gate 是核心机制。"
+  - name: "SAM2 point proxy region supervision"
+    result: "r10 val 67.70 / test 58.48"
+    conclusion: "val 显著升高但 test 下降，放大 val-test gap，暂不并入主线。"
+  - name: "SAM2 point proxy low-weight retry"
+    result: "w=0.1 val 66.98 / test 59.70; w=0.1+agreement gate val 66.31 / test 59.08"
+    conclusion: "降权可缓解但仍低于主线；agreement gate 无收益，proxy 线暂不继续作为 P0。"
+  - name: "Naive Fusion baseline"
+    result: "r10 val 64.10 / test 55.79"
+    conclusion: "低于主线 60.59，证明不是任意 RGB-T 融合都能得到收益。"
+  - name: "Layer-decay LR schedule (r10 e80)"
+    config: "r10/e80/seed42/bs=2+2/crop512/modality_heads/dref_prob_w0.5/soft_agreement/lr_adapter=1e-4/lr_rgb_backbone=2e-5/rgb_layer_decay=0.9/lr_aux=1e-4/lr_head=2e-4"
+    result: "best val strict 61.75 / test strict 56.68"
+    conclusion: "相比主线 60.59 明显退化。小类严重下滑（Truck 3.9, Bus 31.0, Bicycle 0.0）。RGB 主干按层衰减 + 长训 e80 不适合当前协议，暂不继续。"
+
 milestones:
-  - id: M0
-    title: "完成研究问题重定义与主线切换"
-    status: completed
   - id: M1
-    title: "完成协议重建（strict 口径 + label ratio + weak label 规则）"
-    status: in_progress
+    title: "固化 FMB label-efficient 协议与当前最佳配置"
+    status: completed
   - id: M2
-    title: "建立半监督强基线并完成首轮消融"
-    status: pending
+    title: "完成关键机制消融（label-efficient）"
+    status: in_progress
+  - id: M2b
+    title: "完成 MM-SAM 对齐与上限差距拆解（full-supervised）"
+    status: in_progress
   - id: M3
-    title: "实现弱监督分支（point/scribble）并完成统一训练"
+    title: "补齐审稿必要 baseline"
     status: pending
   - id: M4
-    title: "完成跨数据集验证（FMB 主场 + 遥感补充）"
+    title: "完成失败案例与可视化分析"
     status: pending
   - id: M5
-    title: "完成投稿主包（主表、消融、效率、鲁棒性、复现）"
+    title: "形成论文方法章节和主表草案"
     status: pending
-  - id: M6
-    title: "完成 BMVC 主投稿并准备 ACCV 备投"
-    status: pending
+
 tasks:
-  - id: T29
-    title: "冻结旧主线：停止新增 FMB 全监督堆模块实验"
+  - id: T01
+    title: "回收 no-disagreement-refine-gate 消融并补 test"
     status: completed
-    owner: codex
-    depends_on: []
-  - id: T30
-    title: "固化口径红线：论文主表仅 strict(absent=0)"
+    priority: P0
+    remote: "ssh -p 38755 root@connect.bjb2.seetacloud.com"
+    work_dir: "/root/autodl-tmp/work_dirs/dref_prob_nogate_r10_e30_seed42"
+    log: "/root/autodl-tmp/logs/dref_prob_nogate_r10_e30_seed42.log"
+    result: "val strict 65.58 / test strict 58.54"
+    conclusion: "低于 gate-on 60.59，确认 disagreement spatial gate 必要。"
+
+  - id: T02
+    title: "回收 SAM2-Guided Label Propagation 探索实验"
     status: completed
-    owner: codex
-    depends_on: [T29]
-  - id: T31
-    title: "制定并落地 label ratio 划分协议（1/2/5/10/20/50%）"
-    status: in_progress
-    owner: codex
-    depends_on: [T30]
-  - id: T32
-    title: "制定并落地 weak label 生成协议（point -> scribble）"
-    status: in_progress
-    owner: codex
-    depends_on: [T30]
-  - id: T33
-    title: "实现半监督训练入口（L+U 批次组织、伪标签缓存与刷新）"
+    priority: P0
+    remote: "ssh -p 21824 root@connect.bjb2.seetacloud.com"
+    work_dir: "/root/autodl-tmp/work_dirs/sam2_proxy_r10_e30_seed42"
+    log: "/root/autodl-tmp/logs/sam2_proxy_r10_e30_seed42.log"
+    purpose: "验证 SAM2 点到掩码能力能否把 point prompt 从单点监督扩展为可靠区域监督。"
+    result: "val strict 67.70 / test strict 58.48"
+    conclusion: "val 高但 test 下降，SAM2 proxy 区域监督暂不作为主线。"
+
+  - id: T02b
+    title: "SAM2 Proxy 减法重试：低权重与跨模态 agreement gate"
+    status: completed
+    priority: P0
+    experiments:
+      - name: "proxy w=0.1"
+        remote: "ssh -p 21824 root@connect.bjb2.seetacloud.com"
+        work_dir: "/root/autodl-tmp/work_dirs/sam2_proxy_w01_r10_e30_seed42"
+        log: "/root/autodl-tmp/logs/sam2_proxy_w01_r10_e30_seed42.log"
+      - name: "proxy w=0.1 + agreement gate"
+        remote: "ssh -p 38755 root@connect.bjb2.seetacloud.com"
+        work_dir: "/root/autodl-tmp/work_dirs/sam2_proxy_w01_agree_r10_e30_seed42"
+        log: "/root/autodl-tmp/logs/sam2_proxy_w01_agree_r10_e30_seed42.log"
+    purpose: "验证 SAM2 proxy 失败是否可通过弱权重和跨模态去噪修复。"
+    result: "w=0.1 test 59.70; w=0.1 + agreement gate test 59.08"
+    conclusion: "没有超过主线 60.59；agreement gate 没有修复 proxy 噪声。"
+
+  - id: T02c
+    title: "r20 EMA Teacher checkpoint selection 验证"
+    status: completed
+    priority: P0
+    remote: "ssh -p 38755 root@connect.bjb2.seetacloud.com"
+    work_dir: "/root/autodl-tmp/work_dirs/label_eff_r20_e30_sp_seed42_softw_agf_dref_prob_valteacher"
+    log: "/root/autodl-tmp/logs/r20_dref_valteacher_e30_seed42.log"
+    baseline:
+      student_best_test: 59.02
+      teacher_state_same_checkpoint_test: 58.58
+    purpose: "验证用 EMA teacher 做 val/best checkpoint 选择能否缓解 r20 val-test gap。"
+    result:
+      best_val_strict_miou: 71.14
+      student_state_test_strict_miou: 60.98
+      teacher_state_test_strict_miou: 61.48
+    conclusion: "teacher-based checkpoint selection 有效，r20 test 从 59.02 提升到 61.48。"
+
+  - id: T02d
+    title: "EMA soft consistency + agreement reliability"
+    status: completed
+    priority: P0
+    remote: "ssh -p 38755 root@connect.bjb2.seetacloud.com"
+    work_dir: "/root/autodl-tmp/work_dirs/label_eff_r20_e30_sp_seed42_softw_agf_dref_prob_valteacher_scons_w02"
+    log: "/root/autodl-tmp/logs/r20_dref_valteacher_scons_w02_e30_seed42.log"
+    recommended_config:
+      label_ratio: 20
+      val_model: "teacher"
+      soft_consistency_weight: 0.2
+      soft_consistency_loss: "kl"
+      soft_consistency_temperature: 2.0
+      soft_consistency_reliability: "agreement"
+      soft_consistency_agreement_mode: "prob"
+      soft_consistency_agreement_floor: 0.5
+    purpose: "让 EMA teacher 参与概率分布层面的软监督，并用跨模态 agreement 动态调权。"
+    result:
+      best_val_strict_miou: 67.04
+      student_state_test_strict_miou: 56.99
+      teacher_state_test_strict_miou: 57.09
+    conclusion: "明显低于 r20 teacher-selection baseline 61.48；soft consistency 过度平滑或强化了错误伪标签，不并入主线。"
+
+  - id: T02e
+    title: "Disagreement-driven Geometric Refinement loss"
+    status: completed
+    priority: P0
+    remote: "ssh -p 21824 root@connect.bjb2.seetacloud.com"
+    work_dir: "/root/autodl-tmp/work_dirs/label_eff_r20_e30_sp_seed42_softw_agf_dref_prob_valteacher_dgr005"
+    log: "/root/autodl-tmp/logs/r20_dref_valteacher_dgr005_e30_seed42.log"
+    config:
+      label_ratio: 20
+      val_model: "teacher"
+      dgr_loss_weight: 0.05
+      dgr_disagreement_mode: "prob"
+      dgr_feature_key: "feat_rgb_enc"
+      soft_consistency_weight: 0.0
+    purpose: "只在 RGB/Thermal 分歧区域，用 SAM2 低层特征边缘约束 refined prediction 的边界梯度，验证几何先验能否补细结构与边界短板。"
+    result:
+      best_val_strict_miou: 65.78
+      student_state_test_strict_miou: 60.77
+      teacher_state_test_strict_miou: 60.81
+    conclusion: "低于 r20 teacher-selection baseline 61.48；Bus 有明显提升但 Truck 大幅下降，总体不并入主线。"
+
+  - id: T03
+    title: "实现/运行 Naive Fusion + same semi+point training"
+    status: completed
+    priority: P0
+    purpose: "证明不是任意 RGB-T 融合都能得到当前收益。"
+    remote: "ssh -p 21824 root@connect.bjb2.seetacloud.com"
+    work_dir: "/root/autodl-tmp/work_dirs/naive_fusion_r10_e30_sp_seed42_softw_dref_prob"
+    log: "/root/autodl-tmp/logs/naive_fusion_r10_e30_seed42.log"
+    result: "val strict 64.10 / test strict 55.79"
+    conclusion: "低于主线 60.59，支持当前融合/可靠性/分歧纠错组合的必要性。"
+
+  - id: T04
+    title: "运行 RGB-only / Thermal-only + same semi+point protocol"
     status: pending
-    owner: codex
-    depends_on: [T31]
-  - id: T34
-    title: "实现可靠性感知伪标签筛选（模态质量权重 + 不确定性过滤）"
+    priority: P0
+    purpose: "证明跨模态可靠性机制的必要性。"
+
+  - id: T04b
+    title: "MM-SAM 差距拆解消融（同口径）"
     status: pending
-    owner: codex
-    depends_on: [T33]
-  - id: T35
-    title: "实现一致性训练与退化增强（模态噪声/缺失模拟）"
+    priority: P0
+    purpose: "定位 66.10 -> 64.31 的主要结构差距来源（early interaction / thermal encoder / neck）"
+    remote: "ssh -p 55633 root@connect.westc.seetacloud.com"
+
+  - id: T05
+    title: "补 MeanTeacher/UniMatch-style RGB-T baseline"
     status: pending
-    owner: codex
-    depends_on: [T33]
-  - id: T36
-    title: "完成半监督核心消融（筛选阈值、一致性损失、可靠性分支）"
+    priority: P1
+    purpose: "回应半监督审稿基线。"
+
+  - id: T06
+    title: "写 failure visualization 脚本"
     status: pending
-    owner: codex
-    depends_on: [T34, T35]
-  - id: T37
-    title: "接入弱监督损失（point/scribble）并完成半弱监督统一训练"
+    priority: P1
+    outputs:
+      - "RGB"
+      - "Thermal"
+      - "GT"
+      - "pred_main"
+      - "pred_rgb"
+      - "pred_thm"
+      - "disagreement_map"
+      - "pred_refined"
+      - "error_map"
+
+  - id: T07
+    title: "点协议成本曲线"
     status: pending
-    owner: codex
-    depends_on: [T32, T36]
-  - id: T38
-    title: "完成 FMB 主实验矩阵（clean/degraded/missing-modality）"
+    priority: P2
+    variants:
+      - "per-class 1 point"
+      - "per-class 2 points"
+      - "fixed 1/3/5 points per image"
+
+  - id: T08
+    title: "整理 r20 val-test gap 病理报告"
     status: pending
-    owner: codex
-    depends_on: [T37]
-  - id: T39
-    title: "完成遥感补充实验（LoveDA/ISPRS/UAVid 至少 1 个可复现实验）"
-    status: pending
-    owner: codex
-    depends_on: [T37]
-  - id: T40
-    title: "构建论文主表：性能-标注比例-鲁棒性-成本四维对照"
-    status: pending
-    owner: codex
-    depends_on: [T38, T39]
-  - id: T41
-    title: "完成审稿风险材料（失败案例、局限性、威胁与复现说明）"
-    status: pending
-    owner: codex
-    depends_on: [T40]
-  - id: T42
-    title: "完成 BMVC 主投稿版本并整理 ACCV 增强包"
-    status: pending
-    owner: codex
-    depends_on: [T41]
+    priority: P2
+    diagnostics:
+      - "per-class IoU r10 vs r20"
+      - "sup/unsup/point loss curves"
+      - "keep/agreement ratio curves"
+      - "checkpoint selection bias"
+
 schedule:
-  - "2026-03-30 ~ 2026-04-06：协议重建 + 半监督入口"
-  - "2026-04-07 ~ 2026-04-20：半监督主实验与核心消融"
-  - "2026-04-21 ~ 2026-05-10：弱监督扩展 + 遥感补充实验"
-  - "2026-05-11 ~ 2026-05-22：BMVC 投稿包收敛"
-  - "2026-05-23 ~ 2026-07-05：ACCV 增强实验与重写"
-notes:
-  - "旧研究材料位于 archive/legacy_2026-03-23/，仅作经验库，不作结果事实来源"
-  - "当前代码资产（auto-loop、staged-funnel、strict 评测）继续复用"
-  - "FMB 仍是短期主实验场，但研究目标改为 label efficiency 而非全监督刷分"
-  - "跨数据集证据为必要项，至少补齐一个遥感公开集可复现结果"
-  - "方法复杂度受控：优先单主线、少模块、强证据"
+  - "2026-04-16 ~ 2026-04-18：回收 no-gate 与必要 baseline。"
+  - "2026-04-19 ~ 2026-04-23：失败案例、点协议成本曲线、r20 病理分析。"
+  - "2026-04-24 ~ 2026-04-30：方法章节、主表和消融表收敛。"

@@ -120,7 +120,7 @@ class RRFBlock(nn.Module):
         fused = fused + self.skip_scale * base_skip + self.detail_scale * detail_residual
 
         pooled_weights = reliability_map.mean(dim=(2, 3))  # [B, 2]
-        return fused, pooled_weights.detach(), reliability_map.detach()
+        return fused, pooled_weights.detach(), reliability_map
 
 
 class RRF(nn.Module):

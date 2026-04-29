@@ -68,6 +68,7 @@ class FMBDataset(Dataset):
         crop_size: int = 512,
         augment: bool = True,
         eval_resize_mode: str = "stretch",
+        train_resize_mode: str = "legacy",
         cat_max_ratio: float = 1.0,
         blur_prob: float = 0.0,
         photo_distort: bool = False,
@@ -82,6 +83,9 @@ class FMBDataset(Dataset):
             eval_resize_mode:
                 - "stretch": direct resize to crop_size x crop_size (legacy behavior)
                 - "letterbox": keep aspect ratio, then pad to crop_size x crop_size
+            train_resize_mode:
+                - "legacy": resize scaled image to at least crop_size before cropping
+                - "mmseg": MMDetection/MMSeg-style random ratio resize, then pad if needed
             cat_max_ratio: Max dominant-class ratio in random crop (1.0 disables).
             blur_prob: Probability of applying Gaussian blur during training.
             photo_distort: Enable stronger photometric distortion.
@@ -90,11 +94,15 @@ class FMBDataset(Dataset):
         assert eval_resize_mode in ("stretch", "letterbox"), (
             f"Unknown eval_resize_mode: {eval_resize_mode}"
         )
+        assert train_resize_mode in ("legacy", "mmseg"), (
+            f"Unknown train_resize_mode: {train_resize_mode}"
+        )
         self.root      = root
         self.split     = split
         self.crop_size = crop_size
         self.augment   = augment and (split in ("train", "trainval"))
         self.eval_resize_mode = eval_resize_mode
+        self.train_resize_mode = train_resize_mode
         self.cat_max_ratio = cat_max_ratio
         self.blur_prob = blur_prob
         self.photo_distort = photo_distort
@@ -176,11 +184,17 @@ class FMBDataset(Dataset):
     # ------------------------------------------------------------------
 
     def _train_transform(self, rgb, thm, label):
-        # 1. Random scale: resize so that the shorter side is in
-        #    [crop_size * 0.5, crop_size * 2.0]
+        # 1. Random scale. The legacy path forces both dimensions to be at
+        #    least crop_size before cropping. The mmseg path mirrors the FMB
+        #    configs used by MM SAM-Adapter: resize by ratio first, then pad
+        #    only if the random crop is larger than the resized image.
         scale = random.uniform(0.5, 2.0)
-        new_h = max(self.crop_size, int(rgb.height * scale))
-        new_w = max(self.crop_size, int(rgb.width  * scale))
+        if self.train_resize_mode == "legacy":
+            new_h = max(self.crop_size, int(rgb.height * scale))
+            new_w = max(self.crop_size, int(rgb.width * scale))
+        else:
+            new_h = max(1, int(round(rgb.height * scale)))
+            new_w = max(1, int(round(rgb.width * scale)))
         rgb   = TF.resize(rgb,   [new_h, new_w], interpolation=Image.BILINEAR)
         thm   = TF.resize(thm,   [new_h, new_w], interpolation=Image.BILINEAR)
         label = TF.resize(label, [new_h, new_w], interpolation=Image.NEAREST)

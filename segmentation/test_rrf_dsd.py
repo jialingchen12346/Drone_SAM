@@ -101,6 +101,12 @@ def parse_args():
         help="Model variant to evaluate",
     )
     parser.add_argument("--checkpoint", required=True, help="Path to checkpoint")
+    parser.add_argument(
+        "--checkpoint-state",
+        default="model",
+        choices=["model", "teacher"],
+        help="State dict inside checkpoint to evaluate",
+    )
     parser.add_argument("--data-root", default="/root/autodl-tmp/datasets/FMB")
     parser.add_argument("--split", default="test", choices=["val", "test"],
                         help="Evaluation split")
@@ -111,6 +117,18 @@ def parse_args():
     parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--eval-resize-mode", default="letterbox", choices=["stretch", "letterbox"])
     parser.add_argument("--bf16", action="store_true", default=True)
+    parser.add_argument("--enable-modality-heads", action="store_true", default=False,
+                        help="Enable RGB/Thermal auxiliary heads")
+    parser.add_argument("--modality-head-weight", type=float, default=0.2,
+                        help="Auxiliary modality head loss weight (for config parity)")
+    parser.add_argument("--enable-reliability-guided-refine", action="store_true", default=False,
+                        help="Enable reliability-guided disagreement refinement")
+    parser.add_argument("--disagreement-refine-weight", type=float, default=0.5,
+                        help="Disagreement refinement loss weight (for config parity)")
+    parser.add_argument("--disagreement-refine-mode", default="prob", choices=["argmax", "prob"],
+                        help="Disagreement map construction mode")
+    parser.add_argument("--no-disagreement-refine-gate", action="store_true", default=False,
+                        help="Disable disagreement gating in refine residual")
     parser.add_argument("--use-thin-structure-refiner", action="store_true", default=False,
                         help="Enable thin-structure compensation branch for V3 checkpoints")
     parser.add_argument("--thin-refiner-scale", type=float, default=0.15,
@@ -142,10 +160,13 @@ def main():
 
     print(f"[config] model_variant: {args.model_variant}")
     print(f"[config] checkpoint: {args.checkpoint}")
+    print(f"[config] checkpoint_state: {args.checkpoint_state}")
     print(f"[config] data_root: {args.data_root}")
     print(f"[config] split: {args.split}")
     print(f"[config] crop_size: {args.crop_size}, batch_size: {args.batch_size}")
     print(f"[config] bf16: {args.bf16}")
+    if args.model_variant == "rrf_dsd":
+        print(f"[config] modality_heads: {args.enable_modality_heads}, rel_refine: {args.enable_reliability_guided_refine}")
 
     # 加载模型
     print("\n[load] 构建模型...")
@@ -154,6 +175,12 @@ def main():
             num_classes=NUM_CLASSES,
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
+            enable_modality_heads=args.enable_modality_heads,
+            modality_head_weight=args.modality_head_weight,
+            enable_reliability_guided_refine=args.enable_reliability_guided_refine,
+            disagreement_refine_weight=args.disagreement_refine_weight,
+            disagreement_refine_mode=args.disagreement_refine_mode,
+            disagreement_refine_use_gate=not args.no_disagreement_refine_gate,
             use_thin_structure_refiner=args.use_thin_structure_refiner,
             thin_refiner_scale=args.thin_refiner_scale,
             use_boundary_refiner=args.use_boundary_refiner,
@@ -180,7 +207,13 @@ def main():
     # 加载 checkpoint
     print(f"[load] 加载权重: {args.checkpoint}")
     ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
-    model.load_state_dict(ckpt["model"])
+    if args.checkpoint_state == "teacher":
+        if "teacher" not in ckpt:
+            raise KeyError(f"Checkpoint has no teacher state: {args.checkpoint}")
+        state = ckpt["teacher"]
+    else:
+        state = ckpt["model"]
+    model.load_state_dict(state)
     print(f"[load] checkpoint epoch={ckpt.get('epoch', 'N/A')}, best_mIoU={ckpt.get('best_miou', 'N/A')}")
 
     model.eval()
