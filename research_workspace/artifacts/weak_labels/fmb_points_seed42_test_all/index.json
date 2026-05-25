@@ -1,0 +1,2262 @@
+{
+  "meta": {
+    "dataset": "FMB",
+    "ratio": 10,
+    "pool": "all",
+    "points_per_class": 1,
+    "class_points": {},
+    "min_class_pixels": 8,
+    "seed": 42,
+    "ignore_index": 255,
+    "source_protocol": "manual_split_scan",
+    "num_samples": 280,
+    "num_input_items": 280,
+    "missing_label_files": 0,
+    "total_points": 2589,
+    "created_at": "2026-05-06T06:37:20.168750Z",
+    "format": "fmb_point_labels_v1",
+    "target_split": "test"
+  },
+  "items": [
+    {
+      "id": "easy/00085.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00085.png",
+      "npz": "points/easy/00085.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00086.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00086.png",
+      "npz": "points/easy/00086.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00087.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00087.png",
+      "npz": "points/easy/00087.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00088.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00088.png",
+      "npz": "points/easy/00088.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00122.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00122.png",
+      "npz": "points/easy/00122.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00123.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00123.png",
+      "npz": "points/easy/00123.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00124.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00124.png",
+      "npz": "points/easy/00124.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00125.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00125.png",
+      "npz": "points/easy/00125.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00166.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00166.png",
+      "npz": "points/easy/00166.npz",
+      "num_points": 12
+    },
+    {
+      "id": "easy/00167.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00167.png",
+      "npz": "points/easy/00167.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/00168.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00168.png",
+      "npz": "points/easy/00168.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/00169.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00169.png",
+      "npz": "points/easy/00169.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00170.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00170.png",
+      "npz": "points/easy/00170.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00171.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00171.png",
+      "npz": "points/easy/00171.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00207.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00207.png",
+      "npz": "points/easy/00207.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00208.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00208.png",
+      "npz": "points/easy/00208.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00209.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00209.png",
+      "npz": "points/easy/00209.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00210.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00210.png",
+      "npz": "points/easy/00210.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00211.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00211.png",
+      "npz": "points/easy/00211.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00212.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00212.png",
+      "npz": "points/easy/00212.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00213.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00213.png",
+      "npz": "points/easy/00213.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00351.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00351.png",
+      "npz": "points/easy/00351.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00352.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00352.png",
+      "npz": "points/easy/00352.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00353.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00353.png",
+      "npz": "points/easy/00353.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00354.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00354.png",
+      "npz": "points/easy/00354.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00355.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00355.png",
+      "npz": "points/easy/00355.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00356.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00356.png",
+      "npz": "points/easy/00356.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00357.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00357.png",
+      "npz": "points/easy/00357.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00358.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00358.png",
+      "npz": "points/easy/00358.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00359.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00359.png",
+      "npz": "points/easy/00359.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00360.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00360.png",
+      "npz": "points/easy/00360.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/00363.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00363.png",
+      "npz": "points/easy/00363.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00364.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00364.png",
+      "npz": "points/easy/00364.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00365.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00365.png",
+      "npz": "points/easy/00365.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/00366.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00366.png",
+      "npz": "points/easy/00366.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/00367.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00367.png",
+      "npz": "points/easy/00367.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/00631.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00631.png",
+      "npz": "points/easy/00631.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00632.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00632.png",
+      "npz": "points/easy/00632.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00633.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00633.png",
+      "npz": "points/easy/00633.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00634.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00634.png",
+      "npz": "points/easy/00634.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00635.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00635.png",
+      "npz": "points/easy/00635.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00636.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00636.png",
+      "npz": "points/easy/00636.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00637.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00637.png",
+      "npz": "points/easy/00637.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00638.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00638.png",
+      "npz": "points/easy/00638.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00639.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00639.png",
+      "npz": "points/easy/00639.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00640.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00640.png",
+      "npz": "points/easy/00640.npz",
+      "num_points": 5
+    },
+    {
+      "id": "easy/00641.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00641.png",
+      "npz": "points/easy/00641.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00642.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00642.png",
+      "npz": "points/easy/00642.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00643.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00643.png",
+      "npz": "points/easy/00643.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00644.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00644.png",
+      "npz": "points/easy/00644.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00645.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00645.png",
+      "npz": "points/easy/00645.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00646.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00646.png",
+      "npz": "points/easy/00646.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00647.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00647.png",
+      "npz": "points/easy/00647.npz",
+      "num_points": 6
+    },
+    {
+      "id": "easy/00648.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00648.png",
+      "npz": "points/easy/00648.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00779.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00779.png",
+      "npz": "points/easy/00779.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00780.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00780.png",
+      "npz": "points/easy/00780.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00781.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00781.png",
+      "npz": "points/easy/00781.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00782.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00782.png",
+      "npz": "points/easy/00782.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00783.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00783.png",
+      "npz": "points/easy/00783.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00784.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00784.png",
+      "npz": "points/easy/00784.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00785.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00785.png",
+      "npz": "points/easy/00785.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00786.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00786.png",
+      "npz": "points/easy/00786.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00787.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00787.png",
+      "npz": "points/easy/00787.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00788.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00788.png",
+      "npz": "points/easy/00788.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00789.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00789.png",
+      "npz": "points/easy/00789.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00790.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00790.png",
+      "npz": "points/easy/00790.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00791.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00791.png",
+      "npz": "points/easy/00791.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00792.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00792.png",
+      "npz": "points/easy/00792.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00793.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00793.png",
+      "npz": "points/easy/00793.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00794.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00794.png",
+      "npz": "points/easy/00794.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00795.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00795.png",
+      "npz": "points/easy/00795.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00796.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00796.png",
+      "npz": "points/easy/00796.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00797.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00797.png",
+      "npz": "points/easy/00797.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00798.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00798.png",
+      "npz": "points/easy/00798.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00799.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00799.png",
+      "npz": "points/easy/00799.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00800.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00800.png",
+      "npz": "points/easy/00800.npz",
+      "num_points": 7
+    },
+    {
+      "id": "easy/00801.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00801.png",
+      "npz": "points/easy/00801.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00802.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00802.png",
+      "npz": "points/easy/00802.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00803.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00803.png",
+      "npz": "points/easy/00803.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00804.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00804.png",
+      "npz": "points/easy/00804.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00805.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00805.png",
+      "npz": "points/easy/00805.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00806.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00806.png",
+      "npz": "points/easy/00806.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00807.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00807.png",
+      "npz": "points/easy/00807.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00808.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00808.png",
+      "npz": "points/easy/00808.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00809.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00809.png",
+      "npz": "points/easy/00809.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00810.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00810.png",
+      "npz": "points/easy/00810.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00811.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00811.png",
+      "npz": "points/easy/00811.npz",
+      "num_points": 8
+    },
+    {
+      "id": "easy/00812.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00812.png",
+      "npz": "points/easy/00812.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/00880.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00880.png",
+      "npz": "points/easy/00880.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00881.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00881.png",
+      "npz": "points/easy/00881.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00882.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00882.png",
+      "npz": "points/easy/00882.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00883.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00883.png",
+      "npz": "points/easy/00883.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00884.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00884.png",
+      "npz": "points/easy/00884.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00885.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00885.png",
+      "npz": "points/easy/00885.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00886.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00886.png",
+      "npz": "points/easy/00886.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00887.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00887.png",
+      "npz": "points/easy/00887.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00888.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00888.png",
+      "npz": "points/easy/00888.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00889.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00889.png",
+      "npz": "points/easy/00889.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/00890.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "00890.png",
+      "npz": "points/easy/00890.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01301.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01301.png",
+      "npz": "points/easy/01301.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01302.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01302.png",
+      "npz": "points/easy/01302.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01303.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01303.png",
+      "npz": "points/easy/01303.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01304.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01304.png",
+      "npz": "points/easy/01304.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01305.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01305.png",
+      "npz": "points/easy/01305.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01306.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01306.png",
+      "npz": "points/easy/01306.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01307.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01307.png",
+      "npz": "points/easy/01307.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01308.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01308.png",
+      "npz": "points/easy/01308.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01309.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01309.png",
+      "npz": "points/easy/01309.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01310.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01310.png",
+      "npz": "points/easy/01310.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01311.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01311.png",
+      "npz": "points/easy/01311.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01312.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01312.png",
+      "npz": "points/easy/01312.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01313.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01313.png",
+      "npz": "points/easy/01313.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01314.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01314.png",
+      "npz": "points/easy/01314.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01315.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01315.png",
+      "npz": "points/easy/01315.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01316.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01316.png",
+      "npz": "points/easy/01316.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01317.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01317.png",
+      "npz": "points/easy/01317.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/01318.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01318.png",
+      "npz": "points/easy/01318.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01319.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01319.png",
+      "npz": "points/easy/01319.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01320.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01320.png",
+      "npz": "points/easy/01320.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01321.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01321.png",
+      "npz": "points/easy/01321.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/01322.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01322.png",
+      "npz": "points/easy/01322.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01323.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01323.png",
+      "npz": "points/easy/01323.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01324.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01324.png",
+      "npz": "points/easy/01324.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/01365.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01365.png",
+      "npz": "points/easy/01365.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01366.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01366.png",
+      "npz": "points/easy/01366.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01367.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01367.png",
+      "npz": "points/easy/01367.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01368.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01368.png",
+      "npz": "points/easy/01368.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01369.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01369.png",
+      "npz": "points/easy/01369.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01370.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01370.png",
+      "npz": "points/easy/01370.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01371.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01371.png",
+      "npz": "points/easy/01371.npz",
+      "num_points": 9
+    },
+    {
+      "id": "easy/01372.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01372.png",
+      "npz": "points/easy/01372.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01373.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01373.png",
+      "npz": "points/easy/01373.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01374.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01374.png",
+      "npz": "points/easy/01374.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01375.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01375.png",
+      "npz": "points/easy/01375.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01376.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01376.png",
+      "npz": "points/easy/01376.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01377.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01377.png",
+      "npz": "points/easy/01377.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01378.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01378.png",
+      "npz": "points/easy/01378.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01379.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01379.png",
+      "npz": "points/easy/01379.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01380.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01380.png",
+      "npz": "points/easy/01380.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01381.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01381.png",
+      "npz": "points/easy/01381.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01382.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01382.png",
+      "npz": "points/easy/01382.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01420.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01420.png",
+      "npz": "points/easy/01420.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01421.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01421.png",
+      "npz": "points/easy/01421.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01422.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01422.png",
+      "npz": "points/easy/01422.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01423.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01423.png",
+      "npz": "points/easy/01423.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01424.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01424.png",
+      "npz": "points/easy/01424.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01425.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01425.png",
+      "npz": "points/easy/01425.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01426.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01426.png",
+      "npz": "points/easy/01426.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01427.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01427.png",
+      "npz": "points/easy/01427.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01428.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01428.png",
+      "npz": "points/easy/01428.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01429.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01429.png",
+      "npz": "points/easy/01429.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01430.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01430.png",
+      "npz": "points/easy/01430.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01431.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01431.png",
+      "npz": "points/easy/01431.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01432.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01432.png",
+      "npz": "points/easy/01432.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01433.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01433.png",
+      "npz": "points/easy/01433.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01434.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01434.png",
+      "npz": "points/easy/01434.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01435.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01435.png",
+      "npz": "points/easy/01435.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01436.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01436.png",
+      "npz": "points/easy/01436.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01437.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01437.png",
+      "npz": "points/easy/01437.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01438.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01438.png",
+      "npz": "points/easy/01438.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01439.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01439.png",
+      "npz": "points/easy/01439.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01440.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01440.png",
+      "npz": "points/easy/01440.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01441.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01441.png",
+      "npz": "points/easy/01441.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01442.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01442.png",
+      "npz": "points/easy/01442.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01443.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01443.png",
+      "npz": "points/easy/01443.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01480.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01480.png",
+      "npz": "points/easy/01480.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01481.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01481.png",
+      "npz": "points/easy/01481.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01485.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01485.png",
+      "npz": "points/easy/01485.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01486.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01486.png",
+      "npz": "points/easy/01486.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01487.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01487.png",
+      "npz": "points/easy/01487.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01488.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01488.png",
+      "npz": "points/easy/01488.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01489.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01489.png",
+      "npz": "points/easy/01489.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01490.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01490.png",
+      "npz": "points/easy/01490.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01491.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01491.png",
+      "npz": "points/easy/01491.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01492.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01492.png",
+      "npz": "points/easy/01492.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01493.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01493.png",
+      "npz": "points/easy/01493.npz",
+      "num_points": 11
+    },
+    {
+      "id": "easy/01494.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01494.png",
+      "npz": "points/easy/01494.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01495.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01495.png",
+      "npz": "points/easy/01495.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01496.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01496.png",
+      "npz": "points/easy/01496.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01497.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01497.png",
+      "npz": "points/easy/01497.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01498.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01498.png",
+      "npz": "points/easy/01498.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01499.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01499.png",
+      "npz": "points/easy/01499.npz",
+      "num_points": 10
+    },
+    {
+      "id": "easy/01500.png",
+      "split": "test",
+      "subset": "easy",
+      "filename": "01500.png",
+      "npz": "points/easy/01500.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00043.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00043.png",
+      "npz": "points/hard/00043.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00044.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00044.png",
+      "npz": "points/hard/00044.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00045.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00045.png",
+      "npz": "points/hard/00045.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00046.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00046.png",
+      "npz": "points/hard/00046.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00047.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00047.png",
+      "npz": "points/hard/00047.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00048.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00048.png",
+      "npz": "points/hard/00048.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00049.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00049.png",
+      "npz": "points/hard/00049.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00050.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00050.png",
+      "npz": "points/hard/00050.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00051.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00051.png",
+      "npz": "points/hard/00051.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00089.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00089.png",
+      "npz": "points/hard/00089.npz",
+      "num_points": 4
+    },
+    {
+      "id": "hard/00090.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00090.png",
+      "npz": "points/hard/00090.npz",
+      "num_points": 4
+    },
+    {
+      "id": "hard/00121.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00121.png",
+      "npz": "points/hard/00121.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00126.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00126.png",
+      "npz": "points/hard/00126.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00127.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00127.png",
+      "npz": "points/hard/00127.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00128.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00128.png",
+      "npz": "points/hard/00128.npz",
+      "num_points": 7
+    },
+    {
+      "id": "hard/00129.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00129.png",
+      "npz": "points/hard/00129.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00130.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00130.png",
+      "npz": "points/hard/00130.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00131.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00131.png",
+      "npz": "points/hard/00131.npz",
+      "num_points": 6
+    },
+    {
+      "id": "hard/00132.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00132.png",
+      "npz": "points/hard/00132.npz",
+      "num_points": 7
+    },
+    {
+      "id": "hard/00133.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00133.png",
+      "npz": "points/hard/00133.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00134.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00134.png",
+      "npz": "points/hard/00134.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00135.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00135.png",
+      "npz": "points/hard/00135.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00381.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00381.png",
+      "npz": "points/hard/00381.npz",
+      "num_points": 5
+    },
+    {
+      "id": "hard/00382.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00382.png",
+      "npz": "points/hard/00382.npz",
+      "num_points": 4
+    },
+    {
+      "id": "hard/00383.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00383.png",
+      "npz": "points/hard/00383.npz",
+      "num_points": 5
+    },
+    {
+      "id": "hard/00384.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00384.png",
+      "npz": "points/hard/00384.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00385.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00385.png",
+      "npz": "points/hard/00385.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00386.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00386.png",
+      "npz": "points/hard/00386.npz",
+      "num_points": 7
+    },
+    {
+      "id": "hard/00387.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00387.png",
+      "npz": "points/hard/00387.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00388.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00388.png",
+      "npz": "points/hard/00388.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00501.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00501.png",
+      "npz": "points/hard/00501.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00502.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00502.png",
+      "npz": "points/hard/00502.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00503.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00503.png",
+      "npz": "points/hard/00503.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00504.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00504.png",
+      "npz": "points/hard/00504.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00505.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00505.png",
+      "npz": "points/hard/00505.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00506.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00506.png",
+      "npz": "points/hard/00506.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00507.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00507.png",
+      "npz": "points/hard/00507.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00508.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00508.png",
+      "npz": "points/hard/00508.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00509.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00509.png",
+      "npz": "points/hard/00509.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00510.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00510.png",
+      "npz": "points/hard/00510.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00511.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00511.png",
+      "npz": "points/hard/00511.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00512.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00512.png",
+      "npz": "points/hard/00512.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00513.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00513.png",
+      "npz": "points/hard/00513.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00514.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00514.png",
+      "npz": "points/hard/00514.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00515.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00515.png",
+      "npz": "points/hard/00515.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00516.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00516.png",
+      "npz": "points/hard/00516.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00517.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00517.png",
+      "npz": "points/hard/00517.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00518.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00518.png",
+      "npz": "points/hard/00518.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00587.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00587.png",
+      "npz": "points/hard/00587.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/00588.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00588.png",
+      "npz": "points/hard/00588.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00589.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00589.png",
+      "npz": "points/hard/00589.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00590.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00590.png",
+      "npz": "points/hard/00590.npz",
+      "num_points": 7
+    },
+    {
+      "id": "hard/00710.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00710.png",
+      "npz": "points/hard/00710.npz",
+      "num_points": 6
+    },
+    {
+      "id": "hard/00711.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00711.png",
+      "npz": "points/hard/00711.npz",
+      "num_points": 6
+    },
+    {
+      "id": "hard/00712.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00712.png",
+      "npz": "points/hard/00712.npz",
+      "num_points": 6
+    },
+    {
+      "id": "hard/00713.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00713.png",
+      "npz": "points/hard/00713.npz",
+      "num_points": 6
+    },
+    {
+      "id": "hard/00714.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00714.png",
+      "npz": "points/hard/00714.npz",
+      "num_points": 6
+    },
+    {
+      "id": "hard/00715.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00715.png",
+      "npz": "points/hard/00715.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00716.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00716.png",
+      "npz": "points/hard/00716.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00717.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00717.png",
+      "npz": "points/hard/00717.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00718.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00718.png",
+      "npz": "points/hard/00718.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/00719.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00719.png",
+      "npz": "points/hard/00719.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00720.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00720.png",
+      "npz": "points/hard/00720.npz",
+      "num_points": 8
+    },
+    {
+      "id": "hard/00721.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "00721.png",
+      "npz": "points/hard/00721.npz",
+      "num_points": 7
+    },
+    {
+      "id": "hard/01046.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01046.png",
+      "npz": "points/hard/01046.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01047.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01047.png",
+      "npz": "points/hard/01047.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01048.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01048.png",
+      "npz": "points/hard/01048.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01049.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01049.png",
+      "npz": "points/hard/01049.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01050.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01050.png",
+      "npz": "points/hard/01050.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01051.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01051.png",
+      "npz": "points/hard/01051.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01052.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01052.png",
+      "npz": "points/hard/01052.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01053.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01053.png",
+      "npz": "points/hard/01053.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01054.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01054.png",
+      "npz": "points/hard/01054.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01055.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01055.png",
+      "npz": "points/hard/01055.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01056.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01056.png",
+      "npz": "points/hard/01056.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01057.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01057.png",
+      "npz": "points/hard/01057.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01058.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01058.png",
+      "npz": "points/hard/01058.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01212.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01212.png",
+      "npz": "points/hard/01212.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01213.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01213.png",
+      "npz": "points/hard/01213.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01214.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01214.png",
+      "npz": "points/hard/01214.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01215.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01215.png",
+      "npz": "points/hard/01215.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01216.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01216.png",
+      "npz": "points/hard/01216.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01217.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01217.png",
+      "npz": "points/hard/01217.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01218.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01218.png",
+      "npz": "points/hard/01218.npz",
+      "num_points": 9
+    },
+    {
+      "id": "hard/01219.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01219.png",
+      "npz": "points/hard/01219.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01220.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01220.png",
+      "npz": "points/hard/01220.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01221.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01221.png",
+      "npz": "points/hard/01221.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01222.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01222.png",
+      "npz": "points/hard/01222.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01474.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01474.png",
+      "npz": "points/hard/01474.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01475.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01475.png",
+      "npz": "points/hard/01475.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01476.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01476.png",
+      "npz": "points/hard/01476.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01477.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01477.png",
+      "npz": "points/hard/01477.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01478.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01478.png",
+      "npz": "points/hard/01478.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01479.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01479.png",
+      "npz": "points/hard/01479.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01482.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01482.png",
+      "npz": "points/hard/01482.npz",
+      "num_points": 10
+    },
+    {
+      "id": "hard/01483.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01483.png",
+      "npz": "points/hard/01483.npz",
+      "num_points": 11
+    },
+    {
+      "id": "hard/01484.png",
+      "split": "test",
+      "subset": "hard",
+      "filename": "01484.png",
+      "npz": "points/hard/01484.npz",
+      "num_points": 11
+    }
+  ]
+}

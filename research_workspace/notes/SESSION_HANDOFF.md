@@ -1,6 +1,6 @@
 # 会话交接（当前版）
 
-更新时间：2026-04-23
+更新时间：2026-05-25
 
 历史版本已归档：
 
@@ -12,6 +12,41 @@
 - 核心协议：`10% dense labels + unlabeled RGB-T + class-presence point prompts`。
 - 核心方法：`SAM2 Hiera Adapter + ConvNeXt thermal branch + modality heads + confidence-gated/consensus-weighted pseudo labels + disagreement refinement`。
 - 主指标：FMB test strict mIoU（`absent-score=0.0`）。
+
+## 2026-05-06 紧急更新（PPAL 快筛 + 评估口径）
+
+### A. PPAL e20 快筛结果（r10, seed42）
+
+| 实验 | with prompt | without prompt | delta |
+|---|---:|---:|---:|
+| E2 concat | 57.57 | 55.72 | +1.85 |
+| E3 ppal | 55.96 | 54.34 | +1.62 |
+
+补充：
+
+- E1 point-loss-only（best@epoch24）test strict：58.69（无 prompt-aware 前向）。
+- 当前同预算结论：`E2 > E3`。
+
+### B. 关键口径修正
+
+问题根因：
+
+- 之前 with-prompt 评估曾使用 `fmb_points_seed42_r10_all`（train-only）。
+- 导致 val/test 提示命中近似 0，with-prompt 增益被低估。
+
+修复动作（已完成）：
+
+- 生成并同步：
+  - `research_workspace/artifacts/weak_labels/fmb_points_seed42_val_all/index.json`
+  - `research_workspace/artifacts/weak_labels/fmb_points_seed42_test_all/index.json`
+- 命中率核验：
+  - val: `160/160`
+  - test: `280/280`
+
+后续规则：
+
+- val/test with-prompt 评估必须用对应 split 的 point index。
+- 日志中必须附带 `point_index` 路径与 split 命中率说明。
 
 ## 2026-04-23 新增：全监督对齐快照
 
@@ -38,6 +73,55 @@
 /root/autodl-tmp/work_dirs/r100_sup_mmsa_agf_dref_prob_crop800_ohem_stretch_unfreeze4_e30_seed42
 ```
 
+## 2026-05-02 口径修正：`seed2026 = 62.69` 属于全监督，不属于 label-efficient
+
+远端核对结论：
+
+- `357机` / `ssh -p 35877 root@connect.bjb1.seetacloud.com`
+- 启动脚本：`/root/run_rrf_relrefine_v2_ema_valteacher_seed2026_35877.sh`
+- 训练入口：`segmentation/train_cacaf.py`
+- 日志：`Training on 1060 images, validating on 160 images`
+
+这说明：
+
+- `seed2026 = 62.69` 是全监督 `RRF-DSD + reliability-guided refine + EMA teacher validation/selection` 实验。
+- 它不属于 `r10 label-efficient` 主线，之前文档把它记成 label-efficient 主结果是错误归档。
+
+机器映射：
+
+- `357机` = `ssh -p 35877 root@connect.bjb1.seetacloud.com`
+- `481机` = `ssh -p 21824 root@connect.bjb2.seetacloud.com`
+
+已完成的全监督方向1探索：
+
+| 实验 | 机器/远端 | best 选择 | work_dir | best teacher test strict |
+|---|---|---|---|---:|
+| v2 ema valteacher seed42 | `357机` / `35877` | overall `mIoU` | `/root/autodl-tmp/work_dirs/rrf_dsd_relrefine_v2_ema_valteacher_seed42` | `62.17` |
+| v2 ema critsel seed42 | `481机` / `21824` | `critical_mean` | `/root/autodl-tmp/work_dirs/rrf_dsd_relrefine_v2_ema_critsel_seed42` | `61.95` |
+| v2 ema valteacher seed3407 | `357机` / `35877` | overall `mIoU` | `/root/autodl-tmp/work_dirs/rrf_dsd_relrefine_v2_ema_valteacher_seed3407` | `60.11` |
+| v2 ema valteacher seed2026 | `357机` / `35877` | overall `mIoU` | `/root/autodl-tmp/work_dirs/rrf_dsd_relrefine_v2_ema_valteacher_seed2026` | **62.69** |
+| v2 ema valteacher seed1234 | `481机` / `21824` | overall `mIoU` | `/root/autodl-tmp/work_dirs/rrf_dsd_relrefine_v2_ema_valteacher_seed1234` | `61.92` |
+
+全监督方向1分布：
+
+- `seed42 / teacher / overall miou`: `62.17`
+- `seed3407 / teacher / overall miou`: `60.11`
+- `seed2026 / teacher / overall miou`: **`62.69`**
+- `seed1234 / teacher / overall miou`: `61.92`
+- `seed42 / teacher / critical_mean`: `61.95`
+
+四个 `overall miou + teacher` seed 的均值：
+
+```text
+(62.17 + 60.11 + 62.69 + 61.92) / 4 = 61.72
+```
+
+当前正确口径：
+
+- label-efficient 主线结果仍是 `r10 dref prob / w=0.5 / bs=2+2 / seed42 = 60.59`。
+- `seed2026 = 62.69` 只能写成全监督方向1探索结果，不能写成 label-efficient 主结果。
+- 单模态对照 `58.09 / 51.72` 的同骨架公平比较对象仍是 `MMSA multi-modal seed42 = 60.59`，不是 `62.69`。
+
 ## 当前最佳配置
 
 ```text
@@ -59,6 +143,31 @@ disagreement refinement: prob / weight 0.5 / gate on
 | SAM2 point proxy seed42 | 67.70 | 58.48 | val 高但 test 下降 |
 | SAM2 point proxy w=0.1 | 66.98 | 59.70 | 降权有恢复但未超主线 |
 | SAM2 point proxy w=0.1 + agreement gate | 66.31 | 59.08 | gate 无收益 |
+
+## 2026-05-02 新增：单模态对照（同协议，label-efficient）
+
+已完成：
+
+| 实验 | 机器/远端 | work_dir | best test strict |
+|---|---|---|---:|
+| RGB-only | `481机` / `21824` | `/root/autodl-tmp/work_dirs/label_eff_r10_rgbonly_e30_seed42_softw_agf_dref_prob` | `58.09` |
+| Thermal-only | `357机` / `35877` | `/root/autodl-tmp/work_dirs/label_eff_r10_thermalonly_e30_seed42_softw_agf_dref_prob` | `51.72` |
+
+结论分两层写：
+
+- 同骨架公平对比：
+  - `MMSA multi-modal seed42 = 60.59`
+  - `RGB-only = 58.09`
+  - `Thermal-only = 51.72`
+- 对当前最好主结果的实际差距：
+  - 当前 label-efficient 主线 `MMSA multi-modal seed42 = 60.59`
+  - 相比 `RGB-only` 高 `2.50`
+  - 相比 `Thermal-only` 高 `8.87`
+
+补充观察：
+
+- `RGB-only` 训练后期出现大量 `non-finite loss`，但 `best.pth` 可正常测试到 `58.09`。
+- 单模态结果说明：RGB 明显强于 Thermal；多模态融合收益是实质性的，不是任一单模态本身已足够强。
 
 ## 当前运行实验
 
@@ -350,11 +459,79 @@ test strict mIoU = 55.79
 
 ## 下一步
 
-1. 回收 E4：判断 teacher-based checkpoint selection 是否改善 r20。
-2. 回收 E5：判断 naive fusion baseline 与主线 `60.59` 的差距。
-3. 启动 `RGB-only / Thermal-only + same semi+point`。
-4. 补 `MeanTeacher/UniMatch-style RGB-T baseline`。
-5. 写 failure visualization 脚本。
+1. 回收 E6 (GFFM+MidCorr)：判断早期轻量交互是否提升 r10。
+2. 如果两个 seed 均正收益，做 GFFM-only / MidCorr-only 消融。
+3. 补 `MeanTeacher/UniMatch-style RGB-T baseline`。
+4. 写 failure visualization 脚本。
+
+## 2026-05-02 新增：GFFM + MidLevelCorrection 早期交互实验
+
+新增代码文件：
+
+| 文件 | 作用 |
+|---|---|
+| `segmentation/models/fusion/early_interaction.py` | GFFM + MidLevelCorrection 模块 |
+
+新增 CLI 参数（`train_label_efficient.py` + `eval_label_eff.py`）：
+
+```text
+--enable-gffm           # 开启 GFFM 多尺度双向交叉注意力
+--enable-mid-correction  # 开启 Mid-Level feature disagreement-gated correction
+```
+
+### E6. GFFM + MidLevelCorrection
+
+正在进行：
+
+| 实验 | 机器/远端 | seed | work_dir |
+|---|---|---|---|
+| r10 gffm+midcorr | `357机` / `35877` | 42 | `/root/autodl-tmp/work_dirs/label_eff_r10_gffm_midcorr_e30_seed42_softw_agf_dref_prob` |
+| r10 gffm+midcorr | `481机` / `21824` | 3407 | `/root/autodl-tmp/work_dirs/label_eff_r10_gffm_midcorr_e30_seed3407_softw_agf_dref_prob` |
+
+日志：
+
+```text
+/root/autodl-tmp/logs/label_eff_r10_gffm_midcorr_e30_seed42_softw_agf_dref_prob.log
+/root/autodl-tmp/logs/label_eff_r10_gffm_midcorr_e30_seed3407_softw_agf_dref_prob.log
+```
+
+启动脚本：
+
+```text
+/root/run_gffm_midcorr_seed42.sh
+/root/run_gffm_midcorr_seed3407.sh
+```
+
+关键参数（与主线一致，新增 `--enable-gffm --enable-mid-correction`）：
+
+```bash
+--label-ratio 10
+--batch-size-l 2 --batch-size-u 2
+--epochs 30
+--val-model teacher
+--enable-modality-heads --modality-head-weight 0.2
+--fusion-use-agreement-map --fusion-agreement-mode argmax
+--enable-disagreement-refine --disagreement-refine-mode prob --disagreement-refine-weight 0.5
+--pseudo-use-agreement --pseudo-agreement-policy soft_weight --pseudo-agreement-floor 0.5
+--enable-gffm --enable-mid-correction
+--bf16
+```
+
+GFFM 设计要点：
+- 每尺度双向交叉注意力，mid_ch = min(rgb_ch, aux_ch)
+- Adaptive pooling 控制 token 数（max 1024/f1, 1024/f2, 1024/f3, 1024/f4）
+- Gamma 可学习参数初始化为 0（训练从恒等开始）
+- 逐尺度独立参数，不共享
+
+MidLevelCorrection 设计要点：
+- 仅在 stride 16/32 上做（f3, f4）
+- Cosine similarity 作为 feature-level disagreement gate
+- 只校正 Thermal 分支，RGB 不变
+- Gamma 初始化为 0
+
+对照 baseline：
+- seed42: 60.59 (dref prob)
+- seed3407: 59.88 (dref prob)
 
 ## 快速命令
 

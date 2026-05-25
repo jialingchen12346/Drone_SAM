@@ -1,0 +1,20 @@
+SAM 3.1 Zero-Shot on FMB test
+Images: 20, Confidence threshold: 0.1
+Use points: True
+
+Road                   1.1
+Sidewalk               4.6
+Building               0.0
+Traffic Light          1.2
+Traffic Sign           0.5
+Vegetation             0.0
+Sky                    0.4
+Person                 0.0
+Car                    1.1
+Truck                  1.2
+Bus                    0.1
+Motorcycle             0.0
+Bicycle                0.0
+Pole                   nan
+
+mIoU: 0.9

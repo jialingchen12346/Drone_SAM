@@ -1,6 +1,6 @@
 # 决策记录（当前版）
 
-更新时间：2026-04-23
+更新时间：2026-05-02
 
 历史版本已归档：
 
@@ -81,7 +81,7 @@
 
 - 外部半监督 baseline 不足：尚需 `MeanTeacher/UniMatch-style + RGB-T` 对照。
 - 简单融合 baseline 不足：尚需 `Naive Fusion + same training`。
-- 单模态对照不足：尚需 `RGB-only / Thermal-only + same semi+point protocol`。
+- 单模态对照已补齐；后续不再投入主线算力。
 - Failure cases 缺可视化证据：不能只凭 per-class IoU 写讨论。
 
 ## D12. B2 夜间搜救方向归档
@@ -141,3 +141,121 @@
   1. 在 MM-SAM 上做同口径消融，拆出主要增益来源。
   2. 在当前 `unfreeze4+tpi+dref` 骨架中一次迁移一个模块。
   3. 先冲全监督 `65+`，再回灌到 label-efficient 主线。
+
+## D19. 方向1的关键问题首先是 checkpoint trajectory，不是结构失效（2026-04-29，后于 2026-05-02 纠偏）
+
+- 决策：保留 `RRF reliability-guided refine` 方向，且后续默认结合 `EMA teacher` 做验证与 checkpoint 选择。
+- 证据：
+  - 非 EMA：`seed42 epoch_20 = 61.44`，但 `epoch_30/best = 60.04`
+  - 非 EMA：`seed3407 epoch_18 = 61.34`，但 `epoch_24/best = 60.46`
+  - EMA 修正后：`seed42 = 62.17`，`seed2026 = 62.69`，`seed1234 = 61.92`
+- 更正：以上 `62.17 / 62.69 / 61.92 / 60.11` 均来自 `train_cacaf.py` 全监督方向1探索，不属于 label-efficient 主线。
+- 结论：方向1的早期 test 增益是真信号；原问题主要是后期轨迹漂移与 checkpoint selection 失灵，而不是 refine 结构本身无效。`EMA teacher + overall mIoU` 在全监督方向1上已跨多个 seed 复现 `61.9+`。
+- 影响：后续讨论方向1时，必须显式标注它属于全监督探索线，而不是 r10 主线。
+
+## D20. EMA teacher 实现必须只对参数做 EMA，对 buffers 直接拷贝（2026-04-29）
+
+- 决策：`train_cacaf.py` 中 teacher 更新规则固定为：
+  - `parameters`: exponential moving average
+  - `buffers`（如 BN running mean/var）: direct copy
+- 原因：此前错误地对 `buffers` 也做 EMA，导致 teacher validation 明显异常偏低。
+- 影响：任何后续全监督 EMA teacher 实验，都必须沿用该实现；旧异常 teacher 结果不再作为有效证据。
+
+## D21. 当前这轮 critical-class-aware selection 没证明比 overall mIoU 更优（2026-04-29）
+
+- 决策：保留 `critical_mean` 作为诊断指标，但暂不把它升级为默认 best 选择规则。
+- 事实：
+  - `teacher + overall mIoU`：`best = epoch_24`，test strict `62.17`
+  - `teacher + critical_mean`：`best = epoch_24`，test strict `61.95`
+- 结论：关键类波动仍然是 val-test gap 的重要解释，但在当前 `seed42` EMA 试验中，`critical_mean` 没有选出更优 checkpoint。
+
+## D22. 全监督方向1应按“四 seed 分布”汇报，而不是单点高分（2026-04-29，后于 2026-05-02 纠偏）
+
+- 决策：方向1当前统一按四个 `overall mIoU + EMA teacher` seed 汇报：
+  - `seed42 = 62.17`
+  - `seed3407 = 60.11`
+  - `seed2026 = 62.69`
+  - `seed1234 = 61.92`
+- 均值：`61.72`
+- 结论：
+  - `62+` 不是偶然脏点，已跨多个 seed 复现。
+  - `seed3407` 是当前低点，应作为 failure case 做类别级分析。
+  - 当前更准确的表述是“有稳定高分能力，但存在明显 seed variance”，而不是“完全稳定”或“纯偶然”。
+
+## D23. `seed2026 = 62.69` 归属纠正：它是全监督方向1探索结果（2026-05-02）
+
+- 决策：撤销“`seed2026 = 62.69` 作为 label-efficient 主结果”的口径。
+- 远端核对：`357机` 上启动脚本运行的是 `segmentation/train_cacaf.py`，且日志为 `Training on 1060 images, validating on 160 images`。
+- 当前正确归属：`seed2026 / teacher / best = 62.69` 属于全监督 `RRF-DSD + reliability-guided refine + EMA teacher` 探索结果。
+- 影响：
+  - label-efficient 主线结果恢复为 `60.59`；
+  - `62.69` 只能用于全监督方向1分析，不再进入 label-efficient 主表；
+  - 后续文档必须显式区分 `train_cacaf.py` 和 `train_label_efficient.py` 两条线。
+
+## D24. 单模态对照已补齐，后续表述需区分“同骨架对比”与“全监督探索对比”（2026-05-02）
+
+- 决策：单模态对照已完成：
+  - `RGB-only = 58.09`
+  - `Thermal-only = 51.72`
+- 同骨架公平对比对象：
+  - `MMSA multi-modal seed42 = 60.59`
+- 全监督探索对比对象：
+  - `direction1 best seed2026 = 62.69`
+- 影响：
+  - 当讨论“多模态本身是否有效”时，用 `60.59 vs 58.09 / 51.72`
+  - 当讨论“当前完整方法比单模态强多少”时，用 `62.69 vs 58.09 / 51.72`
+  - 不再混用这两层口径。
+
+## D25. 文档口径强制规则：全监督与 label-efficient 不得混写（2026-05-02）
+
+- 决策：凡是 `train_cacaf.py` 产生的结果，一律归入全监督；凡是 `train_label_efficient.py` 产生的结果，才可归入 label-efficient。
+- 原因：本次 `seed2026 = 62.69` 错归档已经证明，仅凭方法名和 work_dir 命名会导致严重误导。
+- 影响：后续所有表格必须至少同时写明 `入口脚本 + 协议 + work_dir`。
+
+## D26. 架构定位：明确承认 prediction-level correction 框架，小步前移而不是彻底重构（2026-05-02）
+
+- 决策：论文中将当前方法定位为 `prediction-level cross-modal reliability and refinement framework`，而不是 `deep early multimodal fusion network`。
+- 原因：
+  - 当前架构的本质是后期纠错：SAM2 Hiera 和 ConvNeXt-Tiny 完全独立编码，所有交互发生在 decoder 阶段的 MMSAFusion + Disagreement Refinement。
+  - 这是弱点（全监督上限偏低、decoder 负担重），但更是当前低标注下有效性的原因（prediction-level correction 更稳、不易过拟合）。
+  - 消融证据链支持这个叙事：Naive fusion → 55.79、no-gate → 58.54、单模态对照说明 correction 才是增益来源。
+- 理由写进论文："Our framework operates primarily at the prediction level rather than learning deep cross-modal representations. This is a deliberate design choice: under extreme label scarcity, early fusion is prone to overfitting and modal bias, while prediction-level reliability estimation and disagreement correction provide more stable training signals."
+- 后期演进方向：不是彻底重构为 early fusion，而是小步前移 — 在 decoder 前增加轻量交互层（GFFM、Mid-Level Correction），不碰 backbone，不改 refine head。
+- 实现：
+  - `GFFM`：每尺度双向交叉注意力 + 零初始化 learnable gate，自适应池化控制显存。
+  - `MidLevelCorrection`：在 stride 16/32 做 feature-level disagreement-gated correction，cosine similarity 作为空间门控。
+  - 两组实验已启动：seed42（357 机）、seed3407（481 机），与当前主线 dref prob 60.59/59.88 对照。
+
+## D27. PPAL-v1 e20 快筛结论：提示有效，但当前吸收分支不优（2026-05-06）
+
+- 决策：保留“点提示参与前向”的方向，但当前 `PPAL-v1` 分支不并入主线。
+- 证据（r10, seed42, e20）：
+  - `E2 concat`: with `57.57` / without `55.72` / delta `+1.85`
+  - `E3 ppal`: with `55.96` / without `54.34` / delta `+1.62`
+- 结论：
+  - 提示输入本身有效（两条线都正增益）。
+  - 现版本 `PPAL-v1` 复杂分支在同预算下劣于 `concat`，暂不作为主线默认结构。
+
+## D28. 评估提示索引口径修正：val/test 必须使用对应 split 点索引（2026-05-06）
+
+- 决策：with-prompt 评估必须使用 split 对应点索引，禁止复用 train 点索引评估 val/test。
+- 发现：
+  - `fmb_points_seed42_r10_all` 覆盖 train `1060/1060`，但 val/test 命中为 0。
+  - 这会导致“with-prompt 开启但无真实提示命中”的伪对照。
+- 修正：
+  - 新增 `fmb_points_seed42_val_all`（160/160 命中）
+  - 新增 `fmb_points_seed42_test_all`（280/280 命中）
+- 影响：后续所有提示增益报告，必须记录所用 `point_index` 路径与 split 命中率。
+
+## D29. SHIFNet Encoder 作为特征提取器（2026-05-25）
+
+- 决策：将 SHIFNet 的冻结 Encoder（Hiera + 48 Adapter + Neck + SACF）作为我们的 RGB-T 特征提取器，替换现有的 SAM2HieraAdapter + ConvNeXtAux。
+- 证据：
+  - SHIFNet Encoder+SACF + 0.53M All-MLP head = 66.40 test strict，超过 MM-SAM 66.10
+  - Adapter 是 FMB 数据集特化的，可冻结复用
+  - SACF CXBlocks+MLP 投影是完全不依赖文本的纯视觉融合
+  - 文本嵌入（LanguageBind）仅贡献 1.39 点（67.79-66.40），去掉后仍 SOTA
+- 影响：
+  - 全监督上界从 64.35 提升到 >66（预期 67+）
+  - 不再需要 ConvNeXt-Tiny thermal encoder（统一用共享 Hiera）
+  - 可专注于我们的核心创新（跨模态可靠性 + Disagreement Refinement）

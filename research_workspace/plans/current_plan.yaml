@@ -1,6 +1,6 @@
-objective: "完成标注高效 RGB-T 证据链，并对齐全监督上限差距（MM-SAM 66.10 vs ours 64.31）"
+objective: "完成标注高效 RGB-T 证据链，并将全监督上限提升至 67+（使用 SHIFNet Encoder）"
 status: active
-last_updated: "2026-04-23"
+last_updated: "2026-05-25"
 
 active_docs:
   - "research_workspace/notes/ACTIVE_CONTEXT.md"
@@ -31,12 +31,10 @@ protocol:
   main_metric: "test strict mIoU, absent-score=0.0"
   label_budget: "r10"
   dense_labels: "10% train samples"
-  unlabeled_pool: "remaining train samples"
+  unlabeled_pool: "remaining 90% train samples"
   point_prompt:
-    rule: "每张无标注图中，每个出现类别随机采 1 个 mask 内点；类别像素数 < 8 跳过。"
-    samples: 954
-    total_points: 7671
-    avg_points_per_sample: 8.04
+    budget: "100% train samples"
+    rule: "每张训练图中，每个出现类别随机采 1 个 mask 内点；类别像素数 < 8 跳过。"
   loss_weights:
     unsup_weight: 1.0
     point_weight: 0.2
@@ -66,6 +64,10 @@ current_best:
     teacher_state_test_strict_miou: 61.48
 
 full_supervised_alignment:
+  new_baselines_2026_05_25:
+    shifnet_official_strict_test_miou: 67.79
+    shifnet_encoder_sacf_all_mlp_test_miou: 66.40
+    conclusion: "SHIFNet Encoder+SACF 冻结 + 简单 MLP head 已达 66.40，超越 MM-SAM 66.10"
   benchmark:
     mm_sam_official_strict_test_miou: 66.10
     reproduced_on:
@@ -76,7 +78,11 @@ full_supervised_alignment:
     best_checkpoint: "epoch_30"
     strict_test_miou_remote: 64.35
     strict_test_miou_local_retest: 64.31
+    gap_to_shifnet: 3.44
     gap_to_mm_sam: 1.79
+  next_target:
+    config: "SHIFNet Encoder+SACF frozen + our MMSAFusion + DRef"
+    expected_strict_test_miou: "67+"
   ablations:
     unfreeze4_no_tpi:
       strict_test_miou: 61.64
@@ -141,6 +147,30 @@ milestones:
     status: pending
 
 tasks:
+  - id: T00
+    title: "修正 with-prompt 评估点索引口径（val/test split-specific）"
+    status: completed
+    priority: P0
+    result:
+      val_index: "research_workspace/artifacts/weak_labels/fmb_points_seed42_val_all/index.json"
+      test_index: "research_workspace/artifacts/weak_labels/fmb_points_seed42_test_all/index.json"
+      hit_rate_val: "160/160"
+      hit_rate_test: "280/280"
+    conclusion: "此前 train-only 点索引会导致 val/test with-prompt 命中为 0，现已纠正。"
+
+  - id: T00b
+    title: "PPAL-v1 快筛（r10, seed42, e20）"
+    status: completed
+    priority: P0
+    result:
+      e2_concat_with_prompt: 57.57
+      e2_concat_without_prompt: 55.72
+      e2_delta: 1.85
+      e3_ppal_with_prompt: 55.96
+      e3_ppal_without_prompt: 54.34
+      e3_delta: 1.62
+    conclusion: "提示输入方向有效，但当前 PPAL-v1 分支未超过 naive concat。"
+
   - id: T01
     title: "回收 no-disagreement-refine-gate 消融并补 test"
     status: completed
