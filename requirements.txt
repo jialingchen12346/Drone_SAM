@@ -1,0 +1,30 @@
+# === autodl 环境依赖 ===
+# 基础环境: autodl PyTorch 2.x 镜像 (已含 torch, torchvision, CUDA)
+# 安装: pip install -r requirements.txt
+
+# 分割框架
+mmengine
+mmcv>=2.0
+mmsegmentation
+
+# 图像处理
+opencv-python-headless
+scipy
+scikit-image
+pycocotools
+
+# 模型工具
+einops
+timm
+yacs
+omegaconf
+hydra-core
+
+# 训练/日志
+tensorboard
+
+# 可视化
+matplotlib
+
+# 杂项
+tqdm
