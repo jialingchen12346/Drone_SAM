@@ -380,10 +380,7 @@ def ema_update(teacher: nn.Module, student: nn.Module, decay: float) -> None:
     student_buffers = dict(student_core.named_buffers())
     for name, buffer_t in teacher_buffers.items():
         buffer_s = student_buffers[name]
-        if torch.is_floating_point(buffer_t):
-            buffer_t.data.mul_(decay).add_(buffer_s.data, alpha=1.0 - decay)
-        else:
-            buffer_t.data.copy_(buffer_s.data)
+        buffer_t.data.copy_(buffer_s.data)
 
 
 def summarize_critical_classes(iou_per_class, critical_indices):

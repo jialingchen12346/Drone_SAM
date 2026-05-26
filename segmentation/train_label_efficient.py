@@ -74,6 +74,8 @@ def parse_args() -> argparse.Namespace:
                    help="Optional SAM2 point-to-mask proxy index json")
     p.add_argument("--sam2-cfg", default="configs/sam2.1/sam2.1_hiera_l.yaml")
     p.add_argument("--sam2-ckpt", default="checkpoints/sam2.1_hiera_large.pt")
+    p.add_argument("--rgb-backbone", default="sam2", choices=["sam2", "sam3"])
+    p.add_argument("--sam3-ckpt", default="/home/jl/sam3/sam3.1_multiplex.pt")
     p.add_argument("--work-dir", default="work_dirs/label_efficient_fmb")
 
     # Model
@@ -89,6 +91,12 @@ def parse_args() -> argparse.Namespace:
                    help="Thermal/auxiliary ConvNeXt encoder size")
     p.add_argument("--aux-pretrained-path", default=None,
                    help="Optional local ConvNeXt aux checkpoint path; avoids network download")
+    p.add_argument(
+        "--single-modality",
+        default="none",
+        choices=["none", "rgb", "thermal"],
+        help="Input ablation: rgb keeps RGB and zeros thermal; thermal keeps thermal and zeros RGB.",
+    )
     p.add_argument("--no-cacaf", action="store_true", default=False)
     p.add_argument("--no-sagu", action="store_true", default=False)
     p.add_argument("--enable-modality-heads", action="store_true", default=False)
@@ -100,9 +108,45 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--disagreement-refine-weight", type=float, default=0.5)
     p.add_argument("--disagreement-refine-mode", default="argmax", choices=["argmax", "prob"])
     p.add_argument("--no-disagreement-refine-gate", action="store_true", default=False)
+    p.add_argument("--prompt-dref", action="store_true", default=False,
+                   help="Enable prompt-guided branch (PPAL-v1 compatibility flag).")
+    p.add_argument("--prompt-dref-map-type", default="gaussian", choices=["gaussian", "binary"])
+    p.add_argument("--prompt-dref-sigma", type=float, default=5.0)
+    p.add_argument("--prompt-dref-strength", type=float, default=1.0)
+    p.add_argument("--prompt-dref-apply-teacher", action="store_true", default=False,
+                   help="Also feed prompt maps to teacher forward on unlabeled samples.")
+    p.add_argument("--ppal-mode", default="ppal", choices=["ppal", "concat"],
+                   help="PPAL prompt branch mode: ppal (prompt injection+gate) or concat (naive heatmap concat).")
+    p.add_argument("--prompt-consistency-weight", type=float, default=0.1,
+                   help="Weight for PPAL prompt-aware consistency KL(pred_prompt || pred_main).")
+    p.add_argument("--prompt-consistency-conf-thresh", type=float, default=0.8,
+                   help="Teacher confidence threshold for prompt consistency region.")
+    p.add_argument("--prompt-consistency-exclude-radius", type=int, default=5,
+                   help="Exclude a local neighborhood around prompt points from prompt consistency.")
+    p.add_argument("--num-refine-rounds", type=int, default=1,
+                   help="Number of iterative refinement rounds (shared head weights).")
+    p.add_argument("--refine-round-weights", default="1.0,0.5",
+                   help="Comma-separated supervision weights per round. Default: '1.0,0.5'")
+    p.add_argument(
+        "--infer-refine-step-scales",
+        default="1.0,0.5,0.25,0.125",
+        help="Comma-separated per-round step scales for inference refinement.",
+    )
+    p.add_argument("--infer-refine-use-conf-gate", action="store_true", default=False,
+                   help="Apply low-confidence gate during inference refinement.")
+    p.add_argument("--infer-refine-conf-thresh", type=float, default=0.6,
+                   help="Confidence threshold for inference refinement gate.")
+    p.add_argument("--infer-refine-early-stop", action="store_true", default=False,
+                   help="Early-stop inference refinement when update area becomes tiny.")
+    p.add_argument("--infer-refine-min-update-ratio", type=float, default=0.005,
+                   help="Minimum gated update ratio for continuing inference refinement.")
     p.add_argument("--enable-reliability-guided-refine", action="store_true", default=False)
     p.add_argument("--thermal-prior-injection", action="store_true", default=False)
     p.add_argument("--thermal-prior-init", type=float, default=0.1)
+    p.add_argument("--enable-gffm", action="store_true", default=False,
+                   help="Enable GFFM: per-scale bidirectional cross-attention before AGF fusion.")
+    p.add_argument("--enable-mid-correction", action="store_true", default=False,
+                   help="Enable mid-level feature disagreement-gated correction (stride 16/32).")
     p.add_argument("--dual-ensemble-mode", default="avg", choices=["avg", "confidence"])
 
     # Training
@@ -126,7 +170,7 @@ def parse_args() -> argparse.Namespace:
 
     # Semi / weak
     p.add_argument("--unsup-weight", type=float, default=1.0)
-    p.add_argument("--point-weight", type=float, default=0.2)
+    p.add_argument("--point-weight", type=float, default=0.5)
     p.add_argument("--point-reliability-calibration-weight", type=float, default=0.0,
                    help="Weight for point-guided reliability calibration on RRF reliability maps.")
     p.add_argument("--point-proxy-weight", type=float, default=0.2)
@@ -178,6 +222,8 @@ def parse_args() -> argparse.Namespace:
         choices=["argmax", "prob"],
     )
     p.add_argument("--soft-consistency-agreement-floor", type=float, default=0.5)
+    p.add_argument("--teacher-ckpt", default=None,
+                   help="Path to a pretrained checkpoint to use as frozen teacher (upper-bound ablation).")
     p.add_argument("--dgr-loss-weight", type=float, default=0.0,
                    help="Weight for Disagreement-driven Geometric Refinement loss on unlabeled data.")
     p.add_argument("--dgr-disagreement-mode", default="prob", choices=["argmax", "prob"],
@@ -395,6 +441,8 @@ def build_model(args: argparse.Namespace, device: torch.device) -> nn.Module:
         model = MMSABaselineSegmentor(
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
+            rgb_backbone_type=args.rgb_backbone,
+            sam3_checkpoint=args.sam3_ckpt,
             num_classes=NUM_CLASSES,
             aux_encoder_size=args.aux_encoder_size,
             aux_pretrained_path=args.aux_pretrained_path,
@@ -412,13 +460,26 @@ def build_model(args: argparse.Namespace, device: torch.device) -> nn.Module:
             disagreement_refine_weight=args.disagreement_refine_weight,
             disagreement_refine_mode=args.disagreement_refine_mode,
             disagreement_refine_use_gate=not args.no_disagreement_refine_gate,
+            enable_prompt_guided_dref=getattr(args, "prompt_dref", False),
+            ppal_mode=getattr(args, "ppal_mode", "ppal"),
+            num_refine_rounds=getattr(args, 'num_refine_rounds', 1),
+            refine_round_weights=getattr(args, 'refine_round_weights', None),
+            infer_refine_step_scales=getattr(args, 'infer_refine_step_scales', None),
+            infer_refine_use_conf_gate=getattr(args, 'infer_refine_use_conf_gate', False),
+            infer_refine_conf_thresh=getattr(args, 'infer_refine_conf_thresh', 0.6),
+            infer_refine_early_stop=getattr(args, 'infer_refine_early_stop', False),
+            infer_refine_min_update_ratio=getattr(args, 'infer_refine_min_update_ratio', 0.005),
             thermal_prior_injection=args.thermal_prior_injection,
             thermal_prior_init=args.thermal_prior_init,
+            enable_gffm=args.enable_gffm,
+            enable_mid_correction=args.enable_mid_correction,
         )
     elif args.model_variant == "dual_branch_ct":
         model = DualBranchCoTrainSegmentor(
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
+            rgb_backbone_type=args.rgb_backbone,
+            sam3_checkpoint=args.sam3_ckpt,
             num_classes=NUM_CLASSES,
             use_dice=args.use_dice,
             dice_weight=args.dice_weight,
@@ -433,6 +494,8 @@ def build_model(args: argparse.Namespace, device: torch.device) -> nn.Module:
         model = RRFDSDSegmentor(
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
+            rgb_backbone_type=args.rgb_backbone,
+            sam3_checkpoint=args.sam3_ckpt,
             num_classes=NUM_CLASSES,
             use_dice=args.use_dice,
             dice_weight=args.dice_weight,
@@ -451,6 +514,8 @@ def build_model(args: argparse.Namespace, device: torch.device) -> nn.Module:
         model = CACafSegmentor(
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
+            rgb_backbone_type=args.rgb_backbone,
+            sam3_checkpoint=args.sam3_ckpt,
             num_classes=NUM_CLASSES,
             use_dice=args.use_dice,
             dice_weight=args.dice_weight,
@@ -879,6 +944,51 @@ def compute_soft_consistency_from_outputs(
     )
 
 
+def compute_prompt_aware_consistency_loss(
+    args: argparse.Namespace,
+    student_out: dict,
+    teacher_conf_map: Optional[torch.Tensor],
+    prompt_map: Optional[torch.Tensor],
+) -> torch.Tensor:
+    pred = student_out.get("pred")
+    if pred is None:
+        raise ValueError("Student output must contain 'pred'")
+    if args.prompt_consistency_weight <= 0:
+        return pred.new_tensor(0.0)
+
+    pred_prompt = student_out.get("pred_prompt", pred)
+    pred_main = student_out.get("pred_main", pred).detach()
+
+    log_prob = F.log_softmax(pred_prompt, dim=1)
+    base_prob = F.softmax(pred_main, dim=1)
+    loss_map = F.kl_div(log_prob, base_prob, reduction="none").sum(dim=1)
+
+    if teacher_conf_map is None:
+        conf = F.softmax(pred.detach(), dim=1).max(dim=1, keepdim=True)[0]
+    else:
+        conf = teacher_conf_map
+        if conf.shape[-2:] != pred_prompt.shape[-2:]:
+            conf = F.interpolate(conf, size=pred_prompt.shape[-2:], mode="bilinear", align_corners=False)
+        conf = conf.clamp(0.0, 1.0)
+    conf_mask = (conf.squeeze(1) >= float(args.prompt_consistency_conf_thresh)).float()
+
+    if prompt_map is not None:
+        pm = prompt_map
+        if pm.shape[-2:] != pred_prompt.shape[-2:]:
+            pm = F.interpolate(pm, size=pred_prompt.shape[-2:], mode="bilinear", align_corners=False)
+        prompt_anchor = (pm.sum(dim=1, keepdim=True) > 0).float()
+        radius = max(int(args.prompt_consistency_exclude_radius), 0)
+        if radius > 0:
+            k = 2 * radius + 1
+            prompt_anchor = F.max_pool2d(prompt_anchor, kernel_size=k, stride=1, padding=radius)
+        far_mask = 1.0 - prompt_anchor.squeeze(1).clamp(0.0, 1.0)
+    else:
+        far_mask = torch.ones_like(conf_mask)
+
+    weight = conf_mask * far_mask
+    return (loss_map * weight).sum() / weight.sum().clamp_min(1.0)
+
+
 def _sobel_magnitude(x: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
     """Channel-averaged Sobel edge magnitude."""
     dtype = x.dtype
@@ -997,6 +1107,68 @@ def _feat_cosine_gate(
         mode="nearest",
     ).squeeze(0).squeeze(0).bool()
     return gate_pred
+
+
+def build_point_prompt_map(
+    sample_ids: Sequence[str],
+    point_store: Optional[PointLabelStore],
+    height: int,
+    width: int,
+    num_classes: int,
+    device: torch.device,
+    map_type: str = "gaussian",
+    sigma: float = 5.0,
+    strength: float = 1.0,
+) -> Optional[torch.Tensor]:
+    if point_store is None or height <= 0 or width <= 0:
+        return None
+    if map_type not in {"gaussian", "binary"}:
+        raise ValueError(f"Unsupported prompt map type: {map_type}")
+
+    b = len(sample_ids)
+    prompt = torch.zeros((b, num_classes, height, width), dtype=torch.float32, device=device)
+    yy = torch.arange(height, device=device, dtype=torch.float32)[:, None]
+    xx = torch.arange(width, device=device, dtype=torch.float32)[None, :]
+    sigma = max(float(sigma), 1e-3)
+
+    for i, sid in enumerate(sample_ids):
+        rec = point_store.get(sid)
+        if rec is None or rec["x"].size == 0:
+            continue
+
+        src_w = max(rec["w"], 1)
+        src_h = max(rec["h"], 1)
+        x = torch.from_numpy(rec["x"]).to(device).float()
+        y = torch.from_numpy(rec["y"]).to(device).float()
+        cls = torch.from_numpy(rec["cls"]).to(device).long()
+
+        if src_w == 1:
+            x = torch.zeros_like(x)
+        else:
+            x = torch.round(x * (width - 1) / float(src_w - 1))
+        if src_h == 1:
+            y = torch.zeros_like(y)
+        else:
+            y = torch.round(y * (height - 1) / float(src_h - 1))
+        x = x.long().clamp(0, width - 1)
+        y = y.long().clamp(0, height - 1)
+
+        for j in range(cls.numel()):
+            c = int(cls[j].item())
+            if c < 0 or c >= num_classes:
+                continue
+            yj = int(y[j].item())
+            xj = int(x[j].item())
+            if map_type == "binary":
+                prompt[i, c, yj, xj] = 1.0
+            else:
+                dist2 = (yy - float(yj)).pow(2) + (xx - float(xj)).pow(2)
+                heat = torch.exp(-dist2 / (2.0 * sigma * sigma))
+                prompt[i, c] = torch.maximum(prompt[i, c], heat)
+
+    if strength != 1.0:
+        prompt = prompt * float(strength)
+    return prompt
 
 
 def point_supervision_loss(
@@ -1330,6 +1502,20 @@ def point_reliability_calibration_loss(
     return torch.stack(loss_list).mean(), num_samples, num_points
 
 
+def apply_single_modality_inputs(
+    rgb: torch.Tensor,
+    thm: torch.Tensor,
+    mode: str,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    if mode == "none":
+        return rgb, thm
+    if mode == "rgb":
+        return rgb, torch.zeros_like(thm)
+    if mode == "thermal":
+        return torch.zeros_like(rgb), thm
+    raise ValueError(f"Unsupported single_modality mode: {mode}")
+
+
 @torch.no_grad()
 def validate(
     model: nn.Module,
@@ -1339,6 +1525,7 @@ def validate(
     use_amp: bool,
     amp_dtype: torch.dtype,
     absent_score: Optional[float],
+    single_modality: str,
 ) -> dict:
     model.eval()
     metric.reset()
@@ -1346,6 +1533,7 @@ def validate(
     for rgb, thm, gt, _sample_ids in loader:
         rgb = rgb.to(device, non_blocking=True)
         thm = thm.to(device, non_blocking=True)
+        rgb, thm = apply_single_modality_inputs(rgb, thm, single_modality)
 
         if use_amp:
             with autocast("cuda", dtype=amp_dtype):
@@ -1365,6 +1553,10 @@ def validate(
 
 def main() -> None:
     args = parse_args()
+    args.refine_round_weights = [float(x) for x in args.refine_round_weights.split(",")]
+    args.infer_refine_step_scales = [
+        float(x) for x in str(args.infer_refine_step_scales).split(",") if str(x).strip()
+    ]
     set_seed(args.seed)
     distributed, rank, local_rank, device = setup_distributed(args)
     if is_main_process(rank):
@@ -1377,6 +1569,8 @@ def main() -> None:
             world_size = int(os.environ.get("WORLD_SIZE", "1"))
             print(f"[dist] enabled rank={rank}/{world_size} local_rank={local_rank} backend={args.ddp_backend}")
         print(f"[protocol] {args.protocol_file}")
+        if args.single_modality != "none":
+            print(f"[ablation] single_modality={args.single_modality}")
     if args.point_index and is_main_process(rank):
         print(f"[weak] point index: {args.point_index}")
         if args.point_proxy_index:
@@ -1402,6 +1596,15 @@ def main() -> None:
             print(
                 "[weak] point reliability calibration: "
                 f"weight={args.point_reliability_calibration_weight:.2f}"
+            )
+        if args.prompt_dref:
+            print(
+                "[weak] ppal-v1: "
+                f"map={args.prompt_dref_map_type} sigma={args.prompt_dref_sigma:.1f} "
+                f"strength={args.prompt_dref_strength:.2f} teacher={args.prompt_dref_apply_teacher} "
+                f"cons_w={args.prompt_consistency_weight:.2f} "
+                f"cons_conf>={args.prompt_consistency_conf_thresh:.2f} "
+                f"cons_exclude_r={args.prompt_consistency_exclude_radius}"
             )
 
     # Build base datasets first, then pick protocol subsets.
@@ -1537,7 +1740,17 @@ def main() -> None:
         print("[warn] --unlabeled-augment is ON; point coordinate alignment may be noisy.")
 
     student = build_model(args, device)
-    teacher = copy.deepcopy(student).to(device)
+
+    use_frozen_teacher = args.teacher_ckpt is not None
+    if use_frozen_teacher:
+        teacher = build_model(args, device)
+        t_ckpt = torch.load(args.teacher_ckpt, map_location=device, weights_only=False)
+        t_state = t_ckpt.get("model", t_ckpt)
+        teacher.load_state_dict(t_state, strict=True)
+        if is_main_process(rank):
+            print(f"[teacher] frozen pretrained: {args.teacher_ckpt}")
+    else:
+        teacher = copy.deepcopy(student).to(device)
 
     if distributed:
         student = nn.parallel.DistributedDataParallel(
@@ -1582,7 +1795,7 @@ def main() -> None:
     global_step = 0
 
     if args.resume:
-        ckpt = torch.load(args.resume, map_location=device)
+        ckpt = torch.load(args.resume, map_location=device, weights_only=False)
         student_core.load_state_dict(ckpt["model"])
         if "teacher" in ckpt:
             teacher_core.load_state_dict(ckpt["teacher"])
@@ -1599,6 +1812,7 @@ def main() -> None:
 
     steps_per_epoch = max(len(loader_l), len(loader_u))
     total_steps = max(1, steps_per_epoch * args.epochs)
+    use_prompt_dref = bool(args.prompt_dref and args.model_variant == "mmsa_baseline")
 
     for epoch in range(start_epoch, args.epochs):
         if sampler_l is not None and hasattr(sampler_l, "set_epoch"):
@@ -1616,6 +1830,7 @@ def main() -> None:
         sup_meter = 0.0
         unsup_meter = 0.0
         consistency_meter = 0.0
+        prompt_consistency_meter = 0.0
         dgr_meter = 0.0
         point_meter = 0.0
         prc_meter = 0.0
@@ -1636,6 +1851,39 @@ def main() -> None:
 
             rgb_u = rgb_u.to(device, non_blocking=True)
             thm_u = thm_u.to(device, non_blocking=True)
+            rgb_l, thm_l = apply_single_modality_inputs(rgb_l, thm_l, args.single_modality)
+            rgb_u, thm_u = apply_single_modality_inputs(rgb_u, thm_u, args.single_modality)
+            prompt_map_l = None
+            prompt_map_u = None
+            if use_prompt_dref:
+                prompt_map_l = build_point_prompt_map(
+                    sample_ids=_ids_l,
+                    point_store=point_store,
+                    height=rgb_l.shape[-2],
+                    width=rgb_l.shape[-1],
+                    num_classes=NUM_CLASSES,
+                    device=device,
+                    map_type=args.prompt_dref_map_type,
+                    sigma=args.prompt_dref_sigma,
+                    strength=args.prompt_dref_strength,
+                )
+                prompt_map_u = build_point_prompt_map(
+                    sample_ids=ids_u,
+                    point_store=point_store,
+                    height=rgb_u.shape[-2],
+                    width=rgb_u.shape[-1],
+                    num_classes=NUM_CLASSES,
+                    device=device,
+                    map_type=args.prompt_dref_map_type,
+                    sigma=args.prompt_dref_sigma,
+                    strength=args.prompt_dref_strength,
+                )
+            teacher_prompt_kwargs = {}
+            if use_prompt_dref and args.prompt_dref_apply_teacher:
+                teacher_prompt_kwargs["prompt_map"] = prompt_map_u
+            student_l_kwargs = {}
+            if use_prompt_dref:
+                student_l_kwargs["prompt_map"] = prompt_map_l
 
             cosine_lr_schedule(
                 optimizer,
@@ -1651,7 +1899,7 @@ def main() -> None:
                     sync_ctx = student.no_sync()
                     with sync_ctx:
                         with autocast("cuda", dtype=amp_dtype):
-                            out_l = student(rgb_l, thm_l, gt_l)
+                            out_l = student(rgb_l, thm_l, gt_l, **student_l_kwargs)
                             sup_loss = out_l["loss"]
 
                     finite = torch.isfinite(sup_loss)
@@ -1668,7 +1916,7 @@ def main() -> None:
 
                     with autocast("cuda", dtype=amp_dtype):
                         with torch.no_grad():
-                            out_t = teacher(rgb_u, thm_u, gt=None)
+                            out_t = teacher(rgb_u, thm_u, gt=None, **teacher_prompt_kwargs)
                         pseudo_gt, conf_map, entropy_map, pseudo_weight, keep_ratio, agree_ratio = build_pseudo_targets(
                             out_t["pred"],
                             conf_thresh=args.pseudo_conf_thresh,
@@ -1686,8 +1934,21 @@ def main() -> None:
                         )
 
                         has_valid_pseudo = bool((pseudo_gt != IGNORE_INDEX).any().item())
+                        teacher_conf_u = None
+                        if use_prompt_dref and out_t.get("pred") is not None:
+                            teacher_conf_u = torch.softmax(out_t["pred"].detach(), dim=1).max(dim=1, keepdim=True)[0]
+                        student_u_kwargs = {}
+                        if use_prompt_dref:
+                            student_u_kwargs["prompt_map"] = prompt_map_u
+                            student_u_kwargs["teacher_conf_map"] = teacher_conf_u
                         if has_valid_pseudo:
-                            out_u = student(rgb_u, thm_u, pseudo_gt, pixel_weight=pseudo_weight)
+                            out_u = student(
+                                rgb_u,
+                                thm_u,
+                                pseudo_gt,
+                                pixel_weight=pseudo_weight,
+                                **student_u_kwargs,
+                            )
                             unsup_loss = out_u["loss"]
                             pred_for_point = out_u["pred"]
                         else:
@@ -1697,7 +1958,13 @@ def main() -> None:
                             # synced backward without contributing gradients.
                             dummy_gt = torch.full_like(pseudo_gt, IGNORE_INDEX)
                             dummy_w = torch.zeros_like(pseudo_weight)
-                            out_u = student(rgb_u, thm_u, dummy_gt, pixel_weight=dummy_w)
+                            out_u = student(
+                                rgb_u,
+                                thm_u,
+                                dummy_gt,
+                                pixel_weight=dummy_w,
+                                **student_u_kwargs,
+                            )
                             unsup_loss = out_u["loss"]
                             pred_for_point = out_u["pred"]
 
@@ -1738,12 +2005,19 @@ def main() -> None:
                             prc_points = 0
 
                         consistency_loss = compute_soft_consistency_from_outputs(args, out_u, out_t)
+                        prompt_consistency_loss = compute_prompt_aware_consistency_loss(
+                            args,
+                            out_u,
+                            teacher_conf_u,
+                            prompt_map_u if use_prompt_dref else None,
+                        )
                         dgr_loss = compute_dgr_loss_from_outputs(args, out_u, out_t)
                         aux_loss = (
                             args.unsup_weight * unsup_loss
                             + args.point_weight * point_loss
                             + args.point_reliability_calibration_weight * prc_loss
                             + args.soft_consistency_weight * consistency_loss
+                            + args.prompt_consistency_weight * prompt_consistency_loss
                             + args.dgr_loss_weight * dgr_loss
                         )
                         total_loss = sup_loss + aux_loss
@@ -1775,7 +2049,7 @@ def main() -> None:
                 else:
                     sync_ctx = student.no_sync()
                     with sync_ctx:
-                        out_l = student(rgb_l, thm_l, gt_l)
+                        out_l = student(rgb_l, thm_l, gt_l, **student_l_kwargs)
                         sup_loss = out_l["loss"]
 
                     finite = torch.isfinite(sup_loss)
@@ -1788,7 +2062,7 @@ def main() -> None:
 
                     with autocast("cuda", dtype=amp_dtype):
                         with torch.no_grad():
-                            out_t = teacher(rgb_u, thm_u, gt=None)
+                            out_t = teacher(rgb_u, thm_u, gt=None, **teacher_prompt_kwargs)
                         pseudo_gt, conf_map, entropy_map, pseudo_weight, keep_ratio, agree_ratio = build_pseudo_targets(
                             out_t["pred"],
                             conf_thresh=args.pseudo_conf_thresh,
@@ -1806,14 +2080,33 @@ def main() -> None:
                         )
 
                         has_valid_pseudo = bool((pseudo_gt != IGNORE_INDEX).any().item())
+                        teacher_conf_u = None
+                        if use_prompt_dref and out_t.get("pred") is not None:
+                            teacher_conf_u = torch.softmax(out_t["pred"].detach(), dim=1).max(dim=1, keepdim=True)[0]
+                        student_u_kwargs = {}
+                        if use_prompt_dref:
+                            student_u_kwargs["prompt_map"] = prompt_map_u
+                            student_u_kwargs["teacher_conf_map"] = teacher_conf_u
                         if has_valid_pseudo:
-                            out_u = student(rgb_u, thm_u, pseudo_gt, pixel_weight=pseudo_weight)
+                            out_u = student(
+                                rgb_u,
+                                thm_u,
+                                pseudo_gt,
+                                pixel_weight=pseudo_weight,
+                                **student_u_kwargs,
+                            )
                             unsup_loss = out_u["loss"]
                             pred_for_point = out_u["pred"]
                         else:
                             dummy_gt = torch.full_like(pseudo_gt, IGNORE_INDEX)
                             dummy_w = torch.zeros_like(pseudo_weight)
-                            out_u = student(rgb_u, thm_u, dummy_gt, pixel_weight=dummy_w)
+                            out_u = student(
+                                rgb_u,
+                                thm_u,
+                                dummy_gt,
+                                pixel_weight=dummy_w,
+                                **student_u_kwargs,
+                            )
                             unsup_loss = out_u["loss"]
                             pred_for_point = out_u["pred"]
 
@@ -1854,12 +2147,19 @@ def main() -> None:
                             prc_points = 0
 
                         consistency_loss = compute_soft_consistency_from_outputs(args, out_u, out_t)
+                        prompt_consistency_loss = compute_prompt_aware_consistency_loss(
+                            args,
+                            out_u,
+                            teacher_conf_u,
+                            prompt_map_u if use_prompt_dref else None,
+                        )
                         dgr_loss = compute_dgr_loss_from_outputs(args, out_u, out_t)
                         aux_loss = (
                             args.unsup_weight * unsup_loss
                             + args.point_weight * point_loss
                             + args.point_reliability_calibration_weight * prc_loss
                             + args.soft_consistency_weight * consistency_loss
+                            + args.prompt_consistency_weight * prompt_consistency_loss
                             + args.dgr_loss_weight * dgr_loss
                         )
                         total_loss = sup_loss + aux_loss
@@ -1877,11 +2177,11 @@ def main() -> None:
                     optimizer.step()
             elif args.amp and device.type == "cuda":
                 with autocast("cuda", dtype=amp_dtype):
-                    out_l = student(rgb_l, thm_l, gt_l)
+                    out_l = student(rgb_l, thm_l, gt_l, **student_l_kwargs)
                     sup_loss = out_l["loss"]
 
                     with torch.no_grad():
-                        out_t = teacher(rgb_u, thm_u, gt=None)
+                        out_t = teacher(rgb_u, thm_u, gt=None, **teacher_prompt_kwargs)
                     pseudo_gt, conf_map, entropy_map, pseudo_weight, keep_ratio, agree_ratio = build_pseudo_targets(
                         out_t["pred"],
                         conf_thresh=args.pseudo_conf_thresh,
@@ -1899,12 +2199,30 @@ def main() -> None:
                     )
 
                     has_valid_pseudo = bool((pseudo_gt != IGNORE_INDEX).any().item())
+                    teacher_conf_u = None
+                    if use_prompt_dref and out_t.get("pred") is not None:
+                        teacher_conf_u = torch.softmax(out_t["pred"].detach(), dim=1).max(dim=1, keepdim=True)[0]
+                    student_u_kwargs = {}
+                    if use_prompt_dref:
+                        student_u_kwargs["prompt_map"] = prompt_map_u
+                        student_u_kwargs["teacher_conf_map"] = teacher_conf_u
                     if has_valid_pseudo:
-                        out_u = student(rgb_u, thm_u, pseudo_gt, pixel_weight=pseudo_weight)
+                        out_u = student(
+                            rgb_u,
+                            thm_u,
+                            pseudo_gt,
+                            pixel_weight=pseudo_weight,
+                            **student_u_kwargs,
+                        )
                         unsup_loss = out_u["loss"]
                         pred_for_point = out_u["pred"]
                     else:
-                        out_u = student(rgb_u, thm_u, gt=None)
+                        out_u = student(
+                            rgb_u,
+                            thm_u,
+                            gt=None,
+                            **student_u_kwargs,
+                        )
                         unsup_loss = out_u["pred"].new_tensor(0.0)
                         pred_for_point = out_u["pred"]
 
@@ -1945,6 +2263,12 @@ def main() -> None:
                         prc_points = 0
 
                     consistency_loss = compute_soft_consistency_from_outputs(args, out_u, out_t)
+                    prompt_consistency_loss = compute_prompt_aware_consistency_loss(
+                        args,
+                        out_u,
+                        teacher_conf_u,
+                        prompt_map_u if use_prompt_dref else None,
+                    )
                     dgr_loss = compute_dgr_loss_from_outputs(args, out_u, out_t)
                     total_loss = (
                         sup_loss
@@ -1952,6 +2276,7 @@ def main() -> None:
                         + args.point_weight * point_loss
                         + args.point_reliability_calibration_weight * prc_loss
                         + args.soft_consistency_weight * consistency_loss
+                        + args.prompt_consistency_weight * prompt_consistency_loss
                         + args.dgr_loss_weight * dgr_loss
                     )
 
@@ -1972,11 +2297,11 @@ def main() -> None:
                     nn.utils.clip_grad_norm_(student.parameters(), 1.0)
                     optimizer.step()
             else:
-                out_l = student(rgb_l, thm_l, gt_l)
+                out_l = student(rgb_l, thm_l, gt_l, **student_l_kwargs)
                 sup_loss = out_l["loss"]
 
                 with torch.no_grad():
-                    out_t = teacher(rgb_u, thm_u, gt=None)
+                    out_t = teacher(rgb_u, thm_u, gt=None, **teacher_prompt_kwargs)
                 pseudo_gt, conf_map, entropy_map, pseudo_weight, keep_ratio, agree_ratio = build_pseudo_targets(
                     out_t["pred"],
                     conf_thresh=args.pseudo_conf_thresh,
@@ -1994,12 +2319,30 @@ def main() -> None:
                 )
 
                 has_valid_pseudo = bool((pseudo_gt != IGNORE_INDEX).any().item())
+                teacher_conf_u = None
+                if use_prompt_dref and out_t.get("pred") is not None:
+                    teacher_conf_u = torch.softmax(out_t["pred"].detach(), dim=1).max(dim=1, keepdim=True)[0]
+                student_u_kwargs = {}
+                if use_prompt_dref:
+                    student_u_kwargs["prompt_map"] = prompt_map_u
+                    student_u_kwargs["teacher_conf_map"] = teacher_conf_u
                 if has_valid_pseudo:
-                    out_u = student(rgb_u, thm_u, pseudo_gt, pixel_weight=pseudo_weight)
+                    out_u = student(
+                        rgb_u,
+                        thm_u,
+                        pseudo_gt,
+                        pixel_weight=pseudo_weight,
+                        **student_u_kwargs,
+                    )
                     unsup_loss = out_u["loss"]
                     pred_for_point = out_u["pred"]
                 else:
-                    out_u = student(rgb_u, thm_u, gt=None)
+                    out_u = student(
+                        rgb_u,
+                        thm_u,
+                        gt=None,
+                        **student_u_kwargs,
+                    )
                     unsup_loss = out_u["pred"].new_tensor(0.0)
                     pred_for_point = out_u["pred"]
 
@@ -2040,6 +2383,12 @@ def main() -> None:
                     prc_points = 0
 
                 consistency_loss = compute_soft_consistency_from_outputs(args, out_u, out_t)
+                prompt_consistency_loss = compute_prompt_aware_consistency_loss(
+                    args,
+                    out_u,
+                    teacher_conf_u,
+                    prompt_map_u if use_prompt_dref else None,
+                )
                 dgr_loss = compute_dgr_loss_from_outputs(args, out_u, out_t)
                 total_loss = (
                     sup_loss
@@ -2047,6 +2396,7 @@ def main() -> None:
                     + args.point_weight * point_loss
                     + args.point_reliability_calibration_weight * prc_loss
                     + args.soft_consistency_weight * consistency_loss
+                    + args.prompt_consistency_weight * prompt_consistency_loss
                     + args.dgr_loss_weight * dgr_loss
                 )
 
@@ -2060,12 +2410,14 @@ def main() -> None:
                 nn.utils.clip_grad_norm_(student.parameters(), 1.0)
                 optimizer.step()
 
-            ema_update(teacher, student, args.ema_decay)
+            if not use_frozen_teacher:
+                ema_update(teacher, student, args.ema_decay)
 
             loss_meter += float(total_loss.item())
             sup_meter += float(sup_loss.item())
             unsup_meter += float(unsup_loss.item())
             consistency_meter += float(consistency_loss.item())
+            prompt_consistency_meter += float(prompt_consistency_loss.item())
             dgr_meter += float(dgr_loss.item())
             point_meter += float(point_loss.item())
             prc_meter += float(prc_loss.item())
@@ -2083,6 +2435,7 @@ def main() -> None:
                     f"  Ep[{epoch+1}/{args.epochs}] {step}/{steps_per_epoch}  "
                     f"loss={total_loss.item():.4f} sup={sup_loss.item():.4f} "
                     f"unsup={unsup_loss.item():.4f} cons={consistency_loss.item():.4f} "
+                    f"pcons={prompt_consistency_loss.item():.4f} "
                     f"dgr={dgr_loss.item():.4f} "
                     f"point={point_loss.item():.4f} prc={prc_loss.item():.4f} "
                     f"keep={keep_ratio:.3f} agree={agree_ratio:.3f} conf={conf_map.mean().item():.3f} "
@@ -2096,6 +2449,7 @@ def main() -> None:
                 f"Epoch {epoch+1}/{args.epochs}  "
                 f"loss={loss_meter/steps:.4f}  sup={sup_meter/steps:.4f}  "
                 f"unsup={unsup_meter/steps:.4f}  cons={consistency_meter/steps:.4f}  "
+                f"pcons={prompt_consistency_meter/steps:.4f}  "
                 f"dgr={dgr_meter/steps:.4f}  "
                 f"point={point_meter/steps:.4f}  prc={prc_meter/steps:.4f}  "
                 f"keep={keep_meter/steps:.3f}  agree={agree_meter/steps:.3f}  "
@@ -2127,6 +2481,7 @@ def main() -> None:
                 use_amp=args.amp and device.type == "cuda",
                 amp_dtype=amp_dtype,
                 absent_score=args.absent_score,
+                single_modality=args.single_modality,
             )
             miou = results["mIoU"]
             print(

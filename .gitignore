@@ -45,3 +45,11 @@ Thumbs.db
 *.pyd
 sam2/build/
 sam2/*.egg-info/
+
+# Experiment outputs & results
+scripts/oracle_prompt_*_results_*.txt
+scripts/oracle_prompt_results.txt
+scripts/prompt_viz/
+
+# Temporary scripts (review before commit)
+scripts/debug_*.py

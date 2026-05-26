@@ -14,6 +14,7 @@ import torch.nn.functional as F
 
 from segmentation.models.backbones.aux_encoder import ConvNeXtTinyAux
 from segmentation.models.backbones.sam2_hiera_adapter import SAM2HieraAdapter
+from segmentation.models.backbones.sam3_vitdet_adapter import SAM3ViTDetAdapter
 from segmentation.models.decode_heads.segformer_lite_head import SegFormerLiteHead
 from segmentation.models.segmentors.mmsa_baseline_segmentor import (
     dice_loss,
@@ -31,6 +32,8 @@ class DualBranchCoTrainSegmentor(nn.Module):
         num_classes,
         sam2_checkpoint,
         sam2_config="configs/sam2.1/sam2.1_hiera_l.yaml",
+        rgb_backbone_type="sam2",
+        sam3_checkpoint=None,
         bottleneck_dim=32,
         decode_channels=256,
         aux_loss_weight=0.4,
@@ -66,12 +69,21 @@ class DualBranchCoTrainSegmentor(nn.Module):
                 persistent=False,
             )
 
-        self.rgb_encoder = SAM2HieraAdapter(
-            checkpoint=sam2_checkpoint,
-            config=sam2_config,
-            bottleneck_dim=bottleneck_dim,
-            freeze_backbone=True,
-        )
+        if rgb_backbone_type == "sam3":
+            if not sam3_checkpoint:
+                raise ValueError("sam3_checkpoint is required when rgb_backbone_type='sam3'")
+            self.rgb_encoder = SAM3ViTDetAdapter(
+                checkpoint=sam3_checkpoint,
+                bottleneck_dim=bottleneck_dim,
+                freeze_backbone=True,
+            )
+        else:
+            self.rgb_encoder = SAM2HieraAdapter(
+                checkpoint=sam2_checkpoint,
+                config=sam2_config,
+                bottleneck_dim=bottleneck_dim,
+                freeze_backbone=True,
+            )
         self.aux_encoder = ConvNeXtTinyAux(pretrained=pretrained_aux)
 
         self.rgb_head = SegFormerLiteHead(

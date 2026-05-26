@@ -101,6 +101,10 @@ class RRFBlock(nn.Module):
         self.detail_scale = nn.Parameter(torch.tensor(0.1))
 
     def forward(self, rgb_feat, aux_feat):
+        if aux_feat.shape[2:] != rgb_feat.shape[2:]:
+            aux_feat = F.interpolate(
+                aux_feat, size=rgb_feat.shape[2:], mode="bilinear", align_corners=True
+            )
         rgb_feat = self.align_rgb(rgb_feat)
         aux_feat = self.align_aux(aux_feat)
 

@@ -1,0 +1,16 @@
+oracle_prompt_v3  mIoU=45.72  8-directional  box_margin=32  refine_rounds=2  multimask=True  seed=42
+
+  Road           : 79.1
+  Sidewalk       : 45.7
+  Building       : 55.9
+  Traffic Light  : 10.2
+  Traffic Sign   : 37.7
+  Vegetation     : 59.7
+  Sky            : 88.9
+  Person         : 25.8
+  Car            : 43.3
+  Truck          : 62.6
+  Bus            : 86.2
+  Motorcycle     : 35.7
+  Bicycle        : 0.0
+  Pole           : 9.5

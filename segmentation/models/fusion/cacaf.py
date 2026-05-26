@@ -102,6 +102,10 @@ class CACAfBlock(nn.Module):
             fused: [B, out_channels, H, W]
             weights: [B, 2] detached (w_rgb, w_aux) for visualization
         """
+        if aux_feat.shape[2:] != rgb_feat.shape[2:]:
+            aux_feat = F.interpolate(
+                aux_feat, size=rgb_feat.shape[2:], mode="bilinear", align_corners=True
+            )
         rgb_feat = self.align_rgb(rgb_feat)
         aux_feat = self.align_aux(aux_feat)
 

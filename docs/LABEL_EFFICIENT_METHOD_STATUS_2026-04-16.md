@@ -1,6 +1,14 @@
 # 标注高效 RGB-T 方法状态（2026-04-16）
 
 > 补充更新：2026-04-23（全监督对齐快照）
+>
+> 补充更新：2026-04-29（方向1 EMA teacher 修正后结果）
+>
+> 补充更新：2026-05-02（纠正 `seed2026 = 62.69` 的归属）
+>
+> 补充更新：2026-05-05（PPAL-v1 启动）
+>
+> 补充更新：2026-05-06（PPAL-v1 e20 快筛完成 + 提示评估口径修正）
 
 ```text
 MM-SAM official strict test: 66.10
@@ -8,11 +16,63 @@ Ours best strict test (unfreeze4+tpi, epoch_30): 64.35(remote) / 64.31(local)
 Gap: 1.79
 ```
 
+## PPAL-v1 主协议（2026-05-05 起）
+
+```text
+r10 dense mask + r100 point prompt + unlabeled RGB-T
+```
+
+- Dense mask budget: 10%
+- Point prompt budget: 100%（每个出现类别 1 个点）
+- Unlabeled 90%：由 EMA teacher 伪标签 + point prompt 共同监督
+
+### 2026-05-06 快筛结论（r10, seed42）
+
+| 实验 | 训练设定 | test strict（with prompt） | test strict（without prompt） | delta |
+|---|---|---:|---:|---:|
+| E1 point-loss-only | e30 未跑满（best@epoch24） | - | - | - |
+| E2 heatmap concat | e20 | 57.57 | 55.72 | +1.85 |
+| E3 PPAL-v1 | e20 | 55.96 | 54.34 | +1.62 |
+
+补充：
+
+- `E1` 单独 test strict 为 `58.69`（point loss only，未启 prompt-aware 前向）。
+- 当前同预算下 `E2 > E3`，说明“提示输入有效”，但“当前 PPAL-v1 分支实现未超过 naive concat”。
+
+### 评估口径修正（关键）
+
+2026-05-06 发现并修正：
+
+- 之前 with-prompt 评估误用了 `fmb_points_seed42_r10_all`（仅 train 覆盖）。
+- 结果是 val/test 几乎没有命中提示点，导致 with-prompt 增益被低估。
+
+已补齐并同步：
+
+- `research_workspace/artifacts/weak_labels/fmb_points_seed42_val_all/index.json`
+- `research_workspace/artifacts/weak_labels/fmb_points_seed42_test_all/index.json`
+
+本地核验命中率：
+
+- val: `160/160`（100%）
+- test: `280/280`（100%）
+
+这次 `E2/E3` 的 `+1.85 / +1.62` 是在 test 点提示真实命中后的结果。
+
 对应实例：
 
 - `ssh -p 36176 root@connect.bjb2.seetacloud.com`：`unfreeze4+tpi e30`（最佳）
 - `ssh -p 46181 root@connect.bjb2.seetacloud.com`：`unfreeze8+tpi e50`、`unfreeze4 no-tpi e30`
 - `ssh -p 55633 root@connect.westc.seetacloud.com`：MM-SAM official 4090 复现
+
+新增全监督方向1实例：
+
+- `357机` / `ssh -p 35877 root@connect.bjb1.seetacloud.com`
+  - `rrf_dsd_relrefine_v2_ema_valteacher_seed42`
+  - `rrf_dsd_relrefine_v2_ema_valteacher_seed3407`
+  - `rrf_dsd_relrefine_v2_ema_valteacher_seed2026`
+- `481机` / `ssh -p 21824 root@connect.bjb2.seetacloud.com`
+  - `rrf_dsd_relrefine_v2_ema_critsel_seed42`
+  - `rrf_dsd_relrefine_v2_ema_valteacher_seed1234`
 
 ## 1. 当前问题定义
 
@@ -232,8 +292,10 @@ pred_refined = pred_main + disagreement_map * delta
 
 | 配置 | val strict | test strict |
 |---|---:|---:|
-| dref prob w=0.5 bs=2+2 seed42 | 66.70 | 60.59 |
+| dref prob w=0.5 bs=2+2 seed42 | 66.70 | **60.59** |
 | dref prob w=0.5 bs=2+2 seed3407 | 65.79 | 59.88 |
+| RGB-only + same semi+point protocol | - | 58.09 |
+| Thermal-only + same semi+point protocol | - | 51.72 |
 | r20 dref prob `--val-model teacher` teacher state | 71.14 | 61.48 |
 | r20 + EMA soft consistency w=0.2 teacher state | 67.04 | 57.09 |
 | r20 + DGR w=0.05 teacher state | 65.78 | 60.81 |
@@ -249,6 +311,39 @@ pred_refined = pred_main + disagreement_map * delta
 ```text
 seed42/3407 mean test strict mIoU ≈ 60.24
 ```
+
+全监督方向1探索（不计入 label-efficient 主表）：
+
+```text
+non-EMA seed42: epoch_20 = 61.44, epoch_30/best = 60.04
+non-EMA seed3407: epoch_18 = 61.34, epoch_24/best = 60.46
+EMA teacher seed2026: epoch_24/best = 62.69
+EMA teacher seed42: epoch_24/best = 62.17
+EMA teacher seed3407: epoch_24/best = 60.11
+EMA teacher seed1234: epoch_24/best = 61.92
+4-seed mean strict mIoU ≈ 61.72
+```
+
+纠正说明：
+
+- 上述方向1结果均来自 `segmentation/train_cacaf.py`，属于全监督探索，不属于 `r10 label-efficient`。
+- 因此 label-efficient 当前主结果仍是 `dref prob w=0.5 bs=2+2 seed42 = 60.59`。
+- `seed2026 = 62.69` 只能作为全监督方向1正例，不得再写成 label-efficient 主结果。
+
+单模态对照补充：
+
+```text
+同骨架公平对比：
+MMSA multi-modal seed42 = 60.59
+RGB-only = 58.09
+Thermal-only = 51.72
+```
+
+观察：
+
+- `RGB-only` 明显强于 `Thermal-only`。
+- 多模态收益是实质性的；`60.59 > 58.09 > 51.72` 已经说明单模态不足以达到当前 label-efficient 多模态水平。
+- `RGB-only` 训练后期出现 `non-finite loss`，但 `best.pth` 测试有效，因此当前记录采用其 best checkpoint 结果。
 
 ## 7. 已知负结果
 
@@ -268,15 +363,19 @@ seed42/3407 mean test strict mIoU ≈ 60.24
 | MFNet external unlabeled | 域差异导致下降 |
 | Thermal Prior Injection | 打平主线，无明确收益 |
 
+补充说明：
+
+- 旧的全监督 EMA teacher 异常低分结果不再有效，因为当时实现错误地对 `buffers` 也做了 EMA。
+- 修正为“参数 EMA + buffer 直拷”后，方向1取得 `62.17`，因此旧 teacher 异常不能再用于否定 EMA 路线。
+
 ## 8. 当前缺口
 
 必须补的审稿证据：
 
-1. `Naive Fusion + same training`。
-2. `RGB-only / Thermal-only + same semi+point protocol`。
-3. `MeanTeacher/UniMatch-style RGB-T baseline`。
-4. Failure visualization。
-5. Point protocol cost curve。
+1. `MeanTeacher/UniMatch-style RGB-T baseline`。
+2. Failure visualization。
+3. Point protocol cost curve。
+4. label-efficient 与全监督两条线的表格和口径彻底分离。
 
 ## 9. 新探索：SAM2-Guided Label Propagation
 

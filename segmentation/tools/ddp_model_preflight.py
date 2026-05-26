@@ -33,6 +33,8 @@ def parse_args():
     p.add_argument("--model-variant", default="rrf_dsd", choices=["cacaf", "rrf_dsd"])
     p.add_argument("--sam2-cfg", default="configs/sam2.1/sam2.1_hiera_l.yaml")
     p.add_argument("--sam2-ckpt", default="checkpoints/sam2_hiera_large.pt")
+    p.add_argument("--rgb-backbone", default="sam2", choices=["sam2", "sam3"])
+    p.add_argument("--sam3-ckpt", default="/home/jl/sam3/sam3.1_multiplex.pt")
     p.add_argument("--image-size", type=int, default=256)
     p.add_argument("--batch-size", type=int, default=1)
     p.add_argument("--seed", type=int, default=42)
@@ -52,6 +54,8 @@ def build_model(args, device):
         model = CACafSegmentor(
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
+            rgb_backbone_type=args.rgb_backbone,
+            sam3_checkpoint=args.sam3_ckpt,
             num_classes=NUM_CLASSES,
             use_dice=False,
             use_ohem=False,
@@ -62,6 +66,8 @@ def build_model(args, device):
         model = RRFDSDSegmentor(
             sam2_checkpoint=args.sam2_ckpt,
             sam2_config=args.sam2_cfg,
+            rgb_backbone_type=args.rgb_backbone,
+            sam3_checkpoint=args.sam3_ckpt,
             num_classes=NUM_CLASSES,
             use_dice=False,
             use_ohem=False,

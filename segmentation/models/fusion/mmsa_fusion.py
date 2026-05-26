@@ -200,6 +200,10 @@ class MMSAFusionBlock(nn.Module):
         )
 
     def forward(self, rgb_feat, aux_feat, agreement_map=None):
+        if aux_feat.shape[2:] != rgb_feat.shape[2:]:
+            aux_feat = F.interpolate(
+                aux_feat, size=rgb_feat.shape[2:], mode="bilinear", align_corners=True
+            )
         rgb = self.align_rgb(rgb_feat)
         aux = self.align_aux(aux_feat)
 
@@ -240,6 +244,10 @@ class NaiveFusionBlock(nn.Module):
 
     def forward(self, rgb_feat, aux_feat, agreement_map=None):
         del agreement_map
+        if aux_feat.shape[2:] != rgb_feat.shape[2:]:
+            aux_feat = F.interpolate(
+                aux_feat, size=rgb_feat.shape[2:], mode="bilinear", align_corners=True
+            )
         rgb = self.align_rgb(rgb_feat)
         aux = self.align_aux(aux_feat)
         fused = 0.5 * (rgb + aux)
